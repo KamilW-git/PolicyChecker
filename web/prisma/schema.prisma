@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  REQUESTER
+  REVIEWER
+  POLICY_OWNER
+  POLICY_APPROVER
+  ADMIN
+  AUDITOR
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(REQUESTER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requestsAsRequester     Request[]          @relation("Requester")
+  requestsAsBusinessOwner Request[]          @relation("BusinessOwner")
+  requestsAsBudgetOwner   Request[]          @relation("BudgetOwner")
+  comments                RequestComment[]
+  evaluations             PolicyEvaluation[]
+  auditEvents             AuditEvent[]
+  manualOverrides         ManualOverride[]
+}
+
+enum RequestType {
+  NEW_VENDOR
+  NEW_SOFTWARE
+  SOFTWARE_RENEWAL
+  CONSULTING_SERVICE
+  HARDWARE_PURCHASE
+  EXCEPTION_REQUEST
+}
+
+enum RequestCategory {
+  SAAS
+  HARDWARE
+  CONSULTING
+  MARKETING_SERVICE
+  CLOUD_SERVICE
+  DATA_PROVIDER
+  OTHER
+}
+
+enum RequestStatus {
+  DRAFT
+  SUBMITTED
+  AUTO_APPROVED
+  NEEDS_INFORMATION
+  IN_REVIEW
+  APPROVED
+  REJECTED
+  APPROVED_WITH_EXCEPTION
+  CANCELLED
+}
+
+enum Decision {
+  APPROVED
+  REQUIRES_REVIEW
+  REJECTED
+  MISSING_INFORMATION
+}
+
+enum Currency {
+  USD
+  EUR
+  PLN
+  GBP
+}
+
+enum Department {
+  IT
+  HR
+  FINANCE
+  MARKETING
+  SALES
+  LEGAL
+  PROCUREMENT
+  OTHER
+}
+
+model Request {
+  id            String          @id @default(cuid())
+  title         String
+  description   String
+  type          RequestType
+  category      RequestCategory
+  status        RequestStatus   @default(DRAFT)
+  decision      Decision?
+  annualCost    Float?
+  currency      Currency?
+  vendorName    String
+  vendorCountry String
+  department    Department
+
+  inputData Json // Full snapshot of the dynamic form fields
+
+  requesterId     String
+  requester       User    @relation("Requester", fields: [requesterId], references: [id])
+  businessOwnerId String
+  businessOwner   User    @relation("BusinessOwner", fields: [businessOwnerId], references: [id])
+  budgetOwnerId   String?
+  budgetOwner     User?   @relation("BudgetOwner", fields: [budgetOwnerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments    RequestComment[]
+  attachments RequestAttachment[]
+  evaluations PolicyEvaluation[]
+}
+
+model RequestComment {
+  id         String   @id @default(cuid())
+  requestId  String
+  request    Request  @relation(fields: [requestId], references: [id])
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  content    String
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model RequestAttachment {
+  id           String   @id @default(cuid())
+  requestId    String
+  request      Request  @relation(fields: [requestId], references: [id])
+  filename     String
+  path         String
+  mimeType     String?
+  uploadedAt   DateTime @default(now())
+}
+
+enum PolicyDomain {
+  PROCUREMENT
+  VENDOR_RISK
+  DATA_SECURITY
+  FINANCE
+}
+
+enum PolicyStatus {
+  DRAFT
+  IN_REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+model Policy {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  domain      PolicyDomain
+  status      PolicyStatus @default(DRAFT)
+  ownerId     String
+
+  versions PolicyVersion[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PolicyVersion {
+  id          String       @id @default(cuid())
+  policyId    String
+  policy      Policy       @relation(fields: [policyId], references: [id])
+  version     Int
+  status      PolicyStatus @default(DRAFT)
+  validFrom   DateTime?
+  validTo     DateTime?
+  authorId    String
+  description String?
+
+  rules Rule[]
+
+  createdAt DateTime @default(now())
+}
+
+enum RuleSeverity {
+  INFO
+  WARNING
+  BLOCKER
+}
+
+model Rule {
+  id              String        @id @default(cuid())
+  policyVersionId String
+  policyVersion   PolicyVersion @relation(fields: [policyVersionId], references: [id])
+  name            String
+  description     String?
+  severity        RuleSeverity
+  condition       Json          // The logical condition
+  effect          Json          // The array of effects
+  reason          String
+  enabled         Boolean       @default(true)
+  priority        Int           @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PolicyEvaluation {
+  id             String   @id @default(cuid())
+  requestId      String
+  request        Request  @relation(fields: [requestId], references: [id])
+  decision       Decision
+  inputSnapshot  Json
+  resultSnapshot Json
+  
+  appliedPolicyVersions Json // Array of PolicyVersion IDs or details
+  
+  evaluatedById  String?
+  evaluatedBy    User?    @relation(fields: [evaluatedById], references: [id])
+  evaluatedAt    DateTime @default(now())
+
+  manualOverrides ManualOverride[]
+}
+
+model ManualOverride {
+  id                 String           @id @default(cuid())
+  evaluationId       String
+  evaluation         PolicyEvaluation @relation(fields: [evaluationId], references: [id])
+  newDecision        Decision
+  reason             String
+  comment            String?
+  approvedById       String
+  approvedBy         User             @relation(fields: [approvedById], references: [id])
+  attachmentPath     String?
+  
+  createdAt          DateTime         @default(now())
+}
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String
+  entityId  String
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  details   Json?
+  
+  createdAt DateTime @default(now())
+}
