@@ -1,6 +1,8 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { getCurrentUser } from '@/lib/session'
+import { overrideRequest } from './actions'
 
 export default async function RequestDetailsPage({
   params
@@ -8,6 +10,7 @@ export default async function RequestDetailsPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  const user = await getCurrentUser()
   
   const request = await prisma.request.findUnique({
     where: { id },
@@ -16,7 +19,14 @@ export default async function RequestDetailsPage({
       businessOwner: true,
       evaluations: {
         orderBy: { evaluatedAt: 'desc' },
-        take: 1
+        take: 1,
+        include: {
+          manualOverrides: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            include: { approvedBy: true }
+          }
+        }
       }
     }
   })
@@ -24,6 +34,7 @@ export default async function RequestDetailsPage({
   if (!request) return notFound()
 
   const evaluation = request.evaluations[0]
+  const override = evaluation?.manualOverrides?.[0]
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -32,6 +43,16 @@ export default async function RequestDetailsPage({
           &larr; Wróć do listy
         </Link>
       </div>
+
+      {override && (
+        <div className={`p-4 rounded-xl border text-black ${override.newDecision === 'APPROVED' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+          <h3 className={`font-bold ${override.newDecision === 'APPROVED' ? 'text-emerald-800' : 'text-red-800'}`}>
+            Manualna decyzja: {override.newDecision}
+          </h3>
+          <p className="text-sm mt-1">Podjęta przez: {override.approvedBy.name} w dniu {override.createdAt.toLocaleDateString()}</p>
+          <p className="mt-2 text-sm italic">Uzasadnienie: {override.reason}</p>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-8 py-6 border-b border-slate-100 flex justify-between items-start bg-slate-50">
@@ -42,7 +63,8 @@ export default async function RequestDetailsPage({
             </p>
           </div>
           <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold
-            ${request.status === 'AUTO_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+            ${request.status === 'AUTO_APPROVED' || request.status === 'MANUAL_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+              request.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 
               request.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
               'bg-slate-100 text-slate-800'}`}>
             {request.status}
@@ -116,10 +138,27 @@ export default async function RequestDetailsPage({
               </div>
             </div>
             
-            {evaluation.decision === 'REQUIRES_REVIEW' && (
-              <div className="mt-8 flex justify-end gap-3">
-                <button className="px-5 py-2.5 rounded-lg font-medium text-white bg-slate-800 hover:bg-slate-700 transition">Odpowiedz</button>
-                <button className="px-5 py-2.5 rounded-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition">Zatwierdź Wniosek (Override)</button>
+            {request.status === 'IN_REVIEW' && user?.role === 'REVIEWER' && (
+              <form action={overrideRequest.bind(null, request.id)} className="mt-8 pt-6 border-t border-slate-800">
+                <h4 className="font-bold mb-4 text-slate-200">Panel Recenzenta</h4>
+                <div className="space-y-4">
+                  <textarea 
+                    name="reason" 
+                    required 
+                    placeholder="Wpisz uzasadnienie decyzji..." 
+                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    rows={3}
+                  />
+                  <div className="flex justify-end gap-3">
+                    <button type="submit" name="decision" value="REJECTED" className="px-5 py-2.5 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition">Odrzuć</button>
+                    <button type="submit" name="decision" value="APPROVED" className="px-5 py-2.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition">Zatwierdź Wniosek</button>
+                  </div>
+                </div>
+              </form>
+            )}
+            {request.status === 'IN_REVIEW' && user?.role !== 'REVIEWER' && (
+              <div className="mt-8 pt-6 border-t border-slate-800 text-slate-400 italic">
+                Wniosek oczekuje na decyzję Recenzenta. Tylko Recenzent może go zatwierdzić lub odrzucić.
               </div>
             )}
           </div>

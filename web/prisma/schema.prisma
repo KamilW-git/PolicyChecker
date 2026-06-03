@@ -20,6 +20,7 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String
+  password  String   @default("password123") // Added for authentication
   role      Role     @default(REQUESTER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -7,32 +7,46 @@ async function main() {
 
   // Users
   const requester = await prisma.user.upsert({
-    where: { email: 'requester@example.com' },
+    where: { email: 'requester@pc.com' },
     update: {},
     create: {
-      email: 'requester@example.com',
+      email: 'requester@pc.com',
       name: 'John Requester',
+      password: 'requester123',
       role: Role.REQUESTER,
     },
   })
 
   const reviewer = await prisma.user.upsert({
-    where: { email: 'reviewer@example.com' },
+    where: { email: 'reviewer@pc.com' },
     update: {},
     create: {
-      email: 'reviewer@example.com',
+      email: 'reviewer@pc.com',
       name: 'Jane Reviewer',
+      password: 'reviewer123',
       role: Role.REVIEWER,
     },
   })
 
   const policyOwner = await prisma.user.upsert({
-    where: { email: 'owner@example.com' },
+    where: { email: 'owner@pc.com' },
     update: {},
     create: {
-      email: 'owner@example.com',
+      email: 'owner@pc.com',
       name: 'Alice Owner',
+      password: 'owner123',
       role: Role.POLICY_OWNER,
+    },
+  })
+
+  const auditor = await prisma.user.upsert({
+    where: { email: 'auditor@pc.com' },
+    update: {},
+    create: {
+      email: 'auditor@pc.com',
+      name: 'Bob Auditor',
+      password: 'auditor123',
+      role: Role.AUDITOR,
     },
   })
 

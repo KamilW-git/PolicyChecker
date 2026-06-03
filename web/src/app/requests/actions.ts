@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { RequestType, RequestCategory, Currency, Department, RequestStatus, Decision } from '@prisma/client'
 import { evaluateRequest } from '@/lib/engine'
+import { getCurrentUser } from '@/lib/session'
 
 export async function createRequest(formData: FormData) {
   const title = formData.get('title') as string
@@ -17,12 +18,16 @@ export async function createRequest(formData: FormData) {
   const vendorCountry = formData.get('vendorCountry') as string
   const department = formData.get('department') as Department
 
-  // MVP: Hardcoded users from seed
-  const requester = await prisma.user.findFirst({ where: { role: 'REQUESTER' } })
+  const requester = await getCurrentUser()
+  if (!requester) {
+    throw new Error('Not authenticated')
+  }
+
+  // W MVP używamy po prostu admina jako właściciela biznesowego (albo szukamy POLICY_OWNER)
   const businessOwner = await prisma.user.findFirst({ where: { role: 'POLICY_OWNER' } })
-  
-  if (!requester || !businessOwner) {
-    throw new Error('Seed users not found')
+
+  if (!businessOwner) {
+    throw new Error('System nie posiada właściciela biznesowego')
   }
 
   // 1. Uruchomienie dynamicznego silnika reguł (Policy Engine)

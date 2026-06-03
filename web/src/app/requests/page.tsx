@@ -22,7 +22,7 @@ export default async function RequestsPage({
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Wnioski</h1>
+          <h1 className="text-3xl font-bold text-white">Wnioski</h1>
           <p className="text-slate-500 mt-2">Zarządzaj wnioskami zakupowymi w organizacji.</p>
         </div>
         <Link 
@@ -61,7 +61,8 @@ export default async function RequestsPage({
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                      ${req.status === 'AUTO_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+                      ${req.status === 'AUTO_APPROVED' || req.status === 'MANUAL_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+                        req.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
                         req.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
                         'bg-slate-100 text-slate-800'}`}>
                       {req.status}
