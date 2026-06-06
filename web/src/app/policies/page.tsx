@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import { getCurrentUser } from '@/lib/session'
 
 export default async function PoliciesPage() {
+  const user = await getCurrentUser()
   const policies = await prisma.policy.findMany({
     orderBy: { domain: 'asc' },
     include: {
@@ -17,11 +19,17 @@ export default async function PoliciesPage() {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-white">Polityki Biznesowe</h1>
-          <p className="text-slate-500 mt-2">Zarządzaj zasadami i regułami oceniania wniosków.</p>
+          {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') ? (
+            <p className="text-slate-500 mt-2">Zarządzaj zasadami i regułami oceniania wniosków.</p>
+          ) : (
+            <p className="text-slate-500 mt-2">Przeglądaj zasady i reguły oceniania wniosków.</p>
+          )}
         </div>
-        <button className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition shadow-sm opacity-50 cursor-not-allowed" title="Funkcja dostępna w kolejnych wersjach">
-          + Nowa Polityka
-        </button>
+        {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') && (
+          <button className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition shadow-sm opacity-50 cursor-not-allowed" title="Funkcja dostępna w kolejnych wersjach">
+            + Nowa Polityka
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -52,7 +60,11 @@ export default async function PoliciesPage() {
                   ) : (
                     <span className="text-amber-600">Brak aktywnej wersji</span>
                   )}
-                  <span className="text-blue-600 font-medium group-hover:underline">Zarządzaj &rarr;</span>
+                  {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') ? (
+                    <span className="text-blue-600 font-medium group-hover:underline">Zarządzaj &rarr;</span>
+                  ) : (
+                    <span className="text-blue-600 font-medium group-hover:underline">Przeglądaj &rarr;</span>
+                  )}
                 </div>
               </div>
             </Link>

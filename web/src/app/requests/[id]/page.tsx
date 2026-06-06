@@ -2,7 +2,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
-import { overrideRequest } from './actions'
+import ManualOverrideModal from './ManualOverrideModal'
 
 export default async function RequestDetailsPage({
   params
@@ -19,22 +19,28 @@ export default async function RequestDetailsPage({
       businessOwner: true,
       evaluations: {
         orderBy: { evaluatedAt: 'desc' },
-        take: 1,
-        include: {
-          manualOverrides: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-            include: { approvedBy: true }
-          }
-        }
+        take: 1
+      },
+      manualOverrides: {
+        orderBy: { createdAt: 'asc' },
+        include: { createdBy: true }
       }
     }
   })
 
   if (!request) return notFound()
 
+  // RBAC checks for request viewing
+  if (['REQUESTER', 'POLICY_OWNER', 'POLICY_APPROVER'].includes(user?.role || '')) {
+    if (request.requesterId !== user?.id) {
+      return notFound()
+    }
+  }
+
   const evaluation = request.evaluations[0]
-  const override = evaluation?.manualOverrides?.[0]
+  const overrides = request.manualOverrides || []
+
+  const canReview = ['REVIEWER', 'ADMIN'].includes(user?.role || '')
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -44,13 +50,46 @@ export default async function RequestDetailsPage({
         </Link>
       </div>
 
-      {override && (
-        <div className={`p-4 rounded-xl border text-black ${override.newDecision === 'APPROVED' ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
-          <h3 className={`font-bold ${override.newDecision === 'APPROVED' ? 'text-emerald-800' : 'text-red-800'}`}>
-            Manualna decyzja: {override.newDecision}
-          </h3>
-          <p className="text-sm mt-1">Podjęta przez: {override.approvedBy.name} w dniu {override.createdAt.toLocaleDateString()}</p>
-          <p className="mt-2 text-sm italic">Uzasadnienie: {override.reason}</p>
+      {overrides.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-xl font-bold text-slate-900">Historia Decyzji</h2>
+          {overrides.map((ov) => (
+            <div key={ov.id} className="p-5 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col gap-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-xs font-bold uppercase text-slate-400">Manual Override</span>
+                  <h3 className={`font-bold mt-1 ${
+                    ov.overrideDecision.includes('APPROVED') ? 'text-emerald-600' : 
+                    ov.overrideDecision.includes('REJECTED') ? 'text-red-600' : 'text-amber-600'
+                  }`}>
+                    {ov.overrideDecision}
+                  </h3>
+                </div>
+                <span className="text-xs text-slate-400 font-medium">
+                  {ov.createdAt.toLocaleString()}
+                </span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mt-2">
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5">Reviewer</p>
+                  <p className="text-sm font-medium text-slate-900">{ov.createdBy.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 mb-0.5">Approved By</p>
+                  <p className="text-sm font-medium text-slate-900">{ov.approvedBy}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-500 mb-0.5">Reason</p>
+                  <p className="text-sm text-slate-700">{ov.reason}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs text-slate-500 mb-0.5">Comment</p>
+                  <p className="text-sm text-slate-700">{ov.comment}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
@@ -63,7 +102,7 @@ export default async function RequestDetailsPage({
             </p>
           </div>
           <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-semibold
-            ${request.status === 'AUTO_APPROVED' || request.status === 'MANUAL_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+            ${request.status === 'AUTO_APPROVED' || request.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
               request.status === 'REJECTED' ? 'bg-red-100 text-red-800' : 
               request.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
               'bg-slate-100 text-slate-800'}`}>
@@ -138,25 +177,10 @@ export default async function RequestDetailsPage({
               </div>
             </div>
             
-            {request.status === 'IN_REVIEW' && user?.role === 'REVIEWER' && (
-              <form action={overrideRequest.bind(null, request.id)} className="mt-8 pt-6 border-t border-slate-800">
-                <h4 className="font-bold mb-4 text-slate-200">Panel Recenzenta</h4>
-                <div className="space-y-4">
-                  <textarea 
-                    name="reason" 
-                    required 
-                    placeholder="Wpisz uzasadnienie decyzji..." 
-                    className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    rows={3}
-                  />
-                  <div className="flex justify-end gap-3">
-                    <button type="submit" name="decision" value="REJECTED" className="px-5 py-2.5 rounded-lg font-medium text-white bg-red-600 hover:bg-red-700 transition">Odrzuć</button>
-                    <button type="submit" name="decision" value="APPROVED" className="px-5 py-2.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition">Zatwierdź Wniosek</button>
-                  </div>
-                </div>
-              </form>
+            {canReview && (
+              <ManualOverrideModal requestId={request.id} />
             )}
-            {request.status === 'IN_REVIEW' && user?.role !== 'REVIEWER' && (
+            {!canReview && (
               <div className="mt-8 pt-6 border-t border-slate-800 text-slate-400 italic">
                 Wniosek oczekuje na decyzję Recenzenta. Tylko Recenzent może go zatwierdzić lub odrzucić.
               </div>

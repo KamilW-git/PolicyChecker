@@ -6,44 +6,64 @@ import { revalidatePath } from 'next/cache'
 
 export async function overrideRequest(requestId: string, formData: FormData) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'REVIEWER') {
+  if (!user || !['REVIEWER', 'ADMIN'].includes(user.role)) {
     throw new Error('Unauthorized')
   }
 
+  const decision = formData.get('decision') as any // 'APPROVED' | 'APPROVED_WITH_EXCEPTION' | 'REJECTED' | 'REQUIRES_REVIEW'
   const reason = formData.get('reason') as string
-  const decision = formData.get('decision') as 'APPROVED' | 'REJECTED'
+  const comment = formData.get('comment') as string
+  const approvedBy = formData.get('approvedBy') as string
 
-  if (!reason || !decision) {
+  if (!reason || !decision || !comment || !approvedBy) {
     throw new Error('Brak wymaganych danych')
   }
 
   await prisma.$transaction(async (tx) => {
-    // 1. Znajdujemy ostatnią ewaluację dla tego wniosku
-    const latestEval = await tx.policyEvaluation.findFirst({
-      where: { requestId },
-      orderBy: { evaluatedAt: 'desc' }
-    })
+    // Znajdź obecny wniosek by pobrać originalDecision
+    const req = await tx.request.findUnique({ where: { id: requestId } })
+    if (!req) throw new Error('Wniosek nie istnieje')
 
-    if (!latestEval) {
-      throw new Error('Brak ewaluacji dla tego wniosku - nie można nadpisać')
-    }
+    const originalDecision = req.decision
 
-    // 2. Zapisujemy audyt manualnego nadpisania
+    // Zapisz manualne nadpisanie
     await tx.manualOverride.create({
       data: {
-        evaluationId: latestEval.id,
-        approvedById: user.id,
+        requestId,
+        originalDecision,
+        overrideDecision: decision,
         reason,
-        newDecision: decision
+        comment,
+        approvedBy,
+        createdById: user.id
       }
     })
 
-    // 2. Aktualizujemy wniosek
+    // Aktualizacja wniosku
+    const newStatus = decision.includes('APPROVED') ? 'APPROVED' : 
+                      decision === 'REJECTED' ? 'REJECTED' : 'IN_REVIEW'
+    
     await tx.request.update({
       where: { id: requestId },
       data: {
-        status: decision === 'APPROVED' ? 'MANUAL_APPROVED' : 'REJECTED',
+        status: newStatus as any,
         decision
+      }
+    })
+
+    // Audyt
+    await tx.auditEvent.create({
+      data: {
+        action: 'MANUAL_OVERRIDE',
+        entity: 'Request',
+        entityId: requestId,
+        userId: user.id,
+        details: {
+          originalDecision,
+          overrideDecision: decision,
+          reason,
+          approvedBy
+        }
       }
     })
   })

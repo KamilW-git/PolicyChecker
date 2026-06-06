@@ -31,7 +31,7 @@ model User {
   comments                RequestComment[]
   evaluations             PolicyEvaluation[]
   auditEvents             AuditEvent[]
-  manualOverrides         ManualOverride[]
+  manualOverrides         ManualOverride[]   @relation("OverrideCreatedBy")
 }
 
 enum RequestType {
@@ -116,9 +116,10 @@ model Request {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  comments    RequestComment[]
-  attachments RequestAttachment[]
-  evaluations PolicyEvaluation[]
+  comments        RequestComment[]
+  attachments     RequestAttachment[]
+  evaluations     PolicyEvaluation[]
+  manualOverrides ManualOverride[]
 }
 
 model RequestComment {
@@ -222,19 +223,19 @@ model PolicyEvaluation {
   evaluatedById  String?
   evaluatedBy    User?    @relation(fields: [evaluatedById], references: [id])
   evaluatedAt    DateTime @default(now())
-
-  manualOverrides ManualOverride[]
 }
 
 model ManualOverride {
   id                 String           @id @default(cuid())
-  evaluationId       String
-  evaluation         PolicyEvaluation @relation(fields: [evaluationId], references: [id])
-  newDecision        Decision
+  requestId          String
+  request            Request          @relation(fields: [requestId], references: [id])
+  originalDecision   Decision?
+  overrideDecision   Decision
   reason             String
-  comment            String?
-  approvedById       String
-  approvedBy         User             @relation(fields: [approvedById], references: [id])
+  comment            String
+  approvedBy         String
+  createdById        String
+  createdBy          User             @relation("OverrideCreatedBy", fields: [createdById], references: [id])
   attachmentPath     String?
   
   createdAt          DateTime         @default(now())

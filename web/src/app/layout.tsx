@@ -47,14 +47,14 @@ export default async function RootLayout({
                   <div className="hidden md:flex items-center gap-1">
                     <Link href="/requests" className="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Wnioski</Link>
                     <Link href="/policies" className="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Polityki</Link>
-                    {user.role === 'AUDITOR' && (
+                    {['AUDITOR', 'ADMIN'].includes(user.role) && (
                       <Link href="/audit" className="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Audyt</Link>
                     )}
                   </div>
                 )}
               </div>
               
-              {user && (
+              {user ? (
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <div className="text-sm font-medium">{user.name}</div>
@@ -66,6 +66,17 @@ export default async function RootLayout({
                   }}>
                     <button className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition" title="Wyloguj się">
                       ✕
+                    </button>
+                  </form>
+                </div>
+              ) : (
+                <div className="flex items-center gap-4">
+                  <form action={async () => {
+                    'use server';
+                    await logout();
+                  }}>
+                    <button className="px-4 py-2 bg-slate-800 text-white hover:bg-slate-700 rounded-lg transition text-sm font-medium" title="Wyczyść starą sesję i zaloguj się">
+                      Zaloguj się
                     </button>
                   </form>
                 </div>

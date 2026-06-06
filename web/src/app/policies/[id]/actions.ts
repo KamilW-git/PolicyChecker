@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation'
 
 export async function addRuleAction(policyVersionId: string, formData: FormData) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'POLICY_OWNER') {
+  if (!user || !['POLICY_OWNER', 'ADMIN'].includes(user.role)) {
     throw new Error('Unauthorized')
   }
 
@@ -50,7 +50,7 @@ export async function addRuleAction(policyVersionId: string, formData: FormData)
 
 export async function editRuleAction(ruleId: string, formData: FormData) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'POLICY_OWNER') {
+  if (!user || !['POLICY_OWNER', 'ADMIN'].includes(user.role)) {
     throw new Error('Unauthorized')
   }
 
@@ -89,7 +89,7 @@ export async function editRuleAction(ruleId: string, formData: FormData) {
 
 export async function deleteRuleAction(ruleId: string) {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'POLICY_OWNER') {
+  if (!user || !['POLICY_OWNER', 'ADMIN'].includes(user.role)) {
     throw new Error('Unauthorized')
   }
 

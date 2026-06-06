@@ -81,7 +81,7 @@ export default async function PolicyDetailsPage({
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {activeRules.map(rule => {
-                if (editRuleId === rule.id && user?.role === 'POLICY_OWNER') {
+                if (editRuleId === rule.id && ['POLICY_OWNER', 'ADMIN'].includes(user?.role || '')) {
                   return (
                     <tr key={rule.id} className="bg-slate-50 border-y border-slate-200">
                       <td colSpan={3} className="p-0">
@@ -132,7 +132,7 @@ export default async function PolicyDetailsPage({
                     <td className="px-8 py-4">
                       <div className="flex justify-between">
                         <p className="font-bold text-slate-900">{rule.name}</p>
-                        {user?.role === 'POLICY_OWNER' && (
+                        {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') && (
                           <Link href={`/policies/${id}?editRuleId=${rule.id}`} className="opacity-0 group-hover:opacity-100 text-xs font-medium text-blue-600 hover:text-blue-800 transition">
                             Edytuj
                           </Link>
@@ -176,7 +176,7 @@ export default async function PolicyDetailsPage({
         </div>
       </div>
 
-      {user?.role === 'POLICY_OWNER' && latestVersion && (
+      {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') && latestVersion && (
         <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 overflow-hidden text-white mt-8">
           <div className="px-8 py-5 border-b border-slate-800 bg-slate-950/50">
             <h2 className="text-lg font-bold">Dodaj Nową Regułę (JSON Mode)</h2>

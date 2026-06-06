@@ -1,14 +1,24 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 
+import { getCurrentUser } from '@/lib/session'
+import { redirect } from 'next/navigation'
+
 export default async function RequestsPage({
   searchParams
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string, mine?: string }>
 }) {
-  const { status } = await searchParams
+  const { status, mine } = await searchParams
+  const user = await getCurrentUser()
+  
+  if (!user) return redirect('/login')
 
-  const whereClause = status ? { status: status as any } : {}
+  const whereClause: any = status ? { status: status as any } : {}
+  
+  if (['REQUESTER', 'POLICY_OWNER', 'POLICY_APPROVER'].includes(user.role) || mine === 'true') {
+    whereClause.requesterId = user.id
+  }
   
   const requests = await prisma.request.findMany({
     where: whereClause,
@@ -61,7 +71,7 @@ export default async function RequestsPage({
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                      ${req.status === 'AUTO_APPROVED' || req.status === 'MANUAL_APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
+                      ${req.status === 'AUTO_APPROVED' || req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
                         req.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
                         req.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
                         'bg-slate-100 text-slate-800'}`}>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 export default async function AuditPage() {
   const user = await getCurrentUser()
-  if (!user || user.role !== 'AUDITOR') {
+  if (!user || !['AUDITOR', 'ADMIN'].includes(user.role)) {
     redirect('/')
   }
 
