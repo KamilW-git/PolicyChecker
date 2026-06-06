@@ -15,10 +15,26 @@ export async function middleware(request: NextRequest) {
 
   if (session) {
     try {
-      await jwtVerify(session, key, { algorithms: ['HS256'] })
+      const { payload } = await jwtVerify(session, key, { algorithms: ['HS256'] })
+      const role = payload.role as string
+
       if (isLoginPage) {
         return NextResponse.redirect(new URL('/', request.url))
       }
+
+      const pathname = request.nextUrl.pathname
+
+      // Wszyscy mogą przeglądać /policies, więc nie blokujemy tej trasy na poziomie middleware.
+      // Dalsze zabezpieczenia przed edycją są zrealizowane w samym UI (policies/page.tsx, policies/[id]/page.tsx)
+      // oraz w Server Actions.
+
+      if (pathname.startsWith('/audit')) {
+        const allowedRoles = ['AUDITOR', 'ADMIN']
+        if (!allowedRoles.includes(role)) {
+          return NextResponse.redirect(new URL('/requests', request.url))
+        }
+      }
+
     } catch (err) {
       if (!isLoginPage) {
         return NextResponse.redirect(new URL('/login', request.url))

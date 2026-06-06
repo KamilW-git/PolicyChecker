@@ -63,7 +63,9 @@ export default function LoginPage() {
           <span className="font-medium">requester@pc.com</span> (Wnioskodawca)<br />
           <span className="font-medium">reviewer@pc.com</span> (Zakupy / Reviewer)<br />
           <span className="font-medium">owner@pc.com</span> (Właściciel Polityk)<br />
+          <span className="font-medium">approver@pc.com</span> (Zatwierdzający Polityki)<br />
           <span className="font-medium">auditor@pc.com</span> (Audytor)<br />
+          <span className="font-medium">admin@pc.com</span> (Admin)<br />
         </div>
       </div>
     </div>

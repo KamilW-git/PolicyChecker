@@ -21,6 +21,6 @@ export async function loginAction(formData: FormData) {
     return { error: 'Nieprawidłowy email lub hasło.' }
   }
 
-  await createSession(user.id)
+  await createSession(user.id, user.role)
   redirect('/')
 }

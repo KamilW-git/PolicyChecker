@@ -50,6 +50,28 @@ async function main() {
     },
   })
 
+  const approver = await prisma.user.upsert({
+    where: { email: 'approver@pc.com' },
+    update: {},
+    create: {
+      email: 'approver@pc.com',
+      name: 'Charlie Approver',
+      password: 'approver123',
+      role: Role.POLICY_APPROVER,
+    },
+  })
+
+  const admin = await prisma.user.upsert({
+    where: { email: 'admin@pc.com' },
+    update: {},
+    create: {
+      email: 'admin@pc.com',
+      name: 'Admin Superuser',
+      password: 'admin123',
+      role: Role.ADMIN,
+    },
+  })
+
   // Policy & Rules
   const existingPolicy = await prisma.policy.findFirst({ where: { name: 'Polityka akceptacji zakupów' } })
   if (!existingPolicy) {
