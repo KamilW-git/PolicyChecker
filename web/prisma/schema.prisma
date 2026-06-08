@@ -90,6 +90,21 @@ enum Department {
   OTHER
 }
 
+enum Urgency {
+  LOW
+  NORMAL
+  HIGH
+  EMERGENCY
+}
+
+enum VendorRisk {
+  UNKNOWN
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model Request {
   id            String          @id @default(cuid())
   title         String
@@ -103,6 +118,14 @@ model Request {
   vendorName    String
   vendorCountry String
   department    Department
+
+  processesPersonalData Boolean    @default(false)
+  hasDpa                Boolean    @default(false)
+  transferOutsideEEA    Boolean    @default(false)
+  securityQuestionnaire Boolean    @default(false)
+  dataCategories        Json?
+  urgency               Urgency    @default(NORMAL)
+  vendorRisk            VendorRisk @default(LOW)
 
   inputData Json // Full snapshot of the dynamic form fields
 
@@ -133,14 +156,25 @@ model RequestComment {
   createdAt  DateTime @default(now())
 }
 
+enum AttachmentType {
+  DPA
+  CONTRACT
+  OFFER
+  APPROVAL_MAIL
+  SECURITY_QUESTIONNAIRE
+  VENDOR_ASSESSMENT
+  OTHER
+}
+
 model RequestAttachment {
-  id           String   @id @default(cuid())
-  requestId    String
-  request      Request  @relation(fields: [requestId], references: [id])
-  filename     String
-  path         String
-  mimeType     String?
-  uploadedAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  requestId  String
+  request    Request  @relation(fields: [requestId], references: [id])
+  filename   String
+  path       String
+  mimeType   String?
+  type       AttachmentType @default(OTHER)
+  uploadedAt DateTime @default(now())
 }
 
 enum PolicyDomain {
@@ -182,7 +216,8 @@ model PolicyVersion {
   authorId    String
   description String?
 
-  rules Rule[]
+  rules       Rule[]
+  ruleMatches PolicyEvaluationRuleMatch[]
 
   createdAt DateTime @default(now())
 }
@@ -200,16 +235,19 @@ model Rule {
   name            String
   description     String?
   severity        RuleSeverity
-  condition       Json          // The logical condition
-  effect          Json          // The array of effects
+  condition       Json // The logical condition
+  effect          Json // The array of effects
   reason          String
   enabled         Boolean       @default(true)
   priority        Int           @default(0)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt                 DateTime                    @default(now())
+  updatedAt                 DateTime                    @updatedAt
+  PolicyEvaluationRuleMatch PolicyEvaluationRuleMatch[]
 }
 
+// NFR-7: Obiekty PolicyEvaluation są niemutowalne po utworzeniu (append-only).
+// Nigdy nie wykonuj Prisma update() na tej tabeli. W razie nowej ewaluacji twórz nowy rekord.
 model PolicyEvaluation {
   id             String   @id @default(cuid())
   requestId      String
@@ -217,38 +255,55 @@ model PolicyEvaluation {
   decision       Decision
   inputSnapshot  Json
   resultSnapshot Json
-  
+
   appliedPolicyVersions Json // Array of PolicyVersion IDs or details
-  
-  evaluatedById  String?
-  evaluatedBy    User?    @relation(fields: [evaluatedById], references: [id])
-  evaluatedAt    DateTime @default(now())
+
+  evaluatedById String?
+  evaluatedBy   User?    @relation(fields: [evaluatedById], references: [id])
+  evaluatedAt   DateTime @default(now())
+
+  ruleMatches PolicyEvaluationRuleMatch[]
+}
+
+model PolicyEvaluationRuleMatch {
+  id                 String           @id @default(cuid())
+  policyEvaluationId String
+  policyEvaluation   PolicyEvaluation @relation(fields: [policyEvaluationId], references: [id])
+  ruleId             String
+  rule               Rule             @relation(fields: [ruleId], references: [id])
+  policyVersionId    String
+  policyVersion      PolicyVersion    @relation(fields: [policyVersionId], references: [id])
+  effectTriggered    String
+  details            String?
+
+  createdAt DateTime @default(now())
 }
 
 model ManualOverride {
-  id                 String           @id @default(cuid())
-  requestId          String
-  request            Request          @relation(fields: [requestId], references: [id])
-  originalDecision   Decision?
-  overrideDecision   Decision
-  reason             String
-  comment            String
-  approvedBy         String
-  createdById        String
-  createdBy          User             @relation("OverrideCreatedBy", fields: [createdById], references: [id])
-  attachmentPath     String?
-  
-  createdAt          DateTime         @default(now())
+  id               String    @id @default(cuid())
+  requestId        String
+  request          Request   @relation(fields: [requestId], references: [id])
+  originalDecision Decision?
+  overrideDecision Decision
+  overrideStatus   RequestStatus
+  reason           String
+  comment          String
+  approvedBy       String
+  createdById      String
+  createdBy        User      @relation("OverrideCreatedBy", fields: [createdById], references: [id])
+  attachmentPath   String?
+
+  createdAt DateTime @default(now())
 }
 
 model AuditEvent {
-  id        String   @id @default(cuid())
-  action    String
-  entity    String
-  entityId  String
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  details   Json?
-  
+  id       String  @id @default(cuid())
+  action   String
+  entity   String
+  entityId String
+  userId   String?
+  user     User?   @relation(fields: [userId], references: [id])
+  details  Json?
+
   createdAt DateTime @default(now())
 }

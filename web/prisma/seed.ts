@@ -1,9 +1,12 @@
 import { PrismaClient, Role, PolicyDomain, RuleSeverity } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 async function main() {
   console.log('Seeding database...')
+
+  const password = bcrypt.hashSync('test1234', 10)
 
   // Users
   const requester = await prisma.user.upsert({
@@ -12,7 +15,7 @@ async function main() {
     create: {
       email: 'requester@pc.com',
       name: 'John Requester',
-      password: 'requester123',
+      password: password,
       role: Role.REQUESTER,
     },
   })
@@ -23,7 +26,7 @@ async function main() {
     create: {
       email: 'reviewer@pc.com',
       name: 'Jane Reviewer',
-      password: 'reviewer123',
+      password: password,
       role: Role.REVIEWER,
     },
   })
@@ -34,7 +37,7 @@ async function main() {
     create: {
       email: 'owner@pc.com',
       name: 'Alice Owner',
-      password: 'owner123',
+      password: password,
       role: Role.POLICY_OWNER,
     },
   })
@@ -45,7 +48,7 @@ async function main() {
     create: {
       email: 'auditor@pc.com',
       name: 'Bob Auditor',
-      password: 'auditor123',
+      password: password,
       role: Role.AUDITOR,
     },
   })
@@ -56,7 +59,7 @@ async function main() {
     create: {
       email: 'approver@pc.com',
       name: 'Charlie Approver',
-      password: 'approver123',
+      password: password,
       role: Role.POLICY_APPROVER,
     },
   })
@@ -67,7 +70,7 @@ async function main() {
     create: {
       email: 'admin@pc.com',
       name: 'Admin Superuser',
-      password: 'admin123',
+      password: password,
       role: Role.ADMIN,
     },
   })
@@ -92,18 +95,122 @@ async function main() {
               rules: {
                 create: [
                   {
-                    name: 'SaaS powyżej 5 000 EUR wymaga oceny działu zakupów',
+                    name: 'SaaS powyżej 5 000 wymaga oceny działu zakupów',
                     severity: RuleSeverity.WARNING,
                     condition: {
                       operator: 'AND',
                       conditions: [
                         { field: 'category', operator: 'equals', value: 'SAAS' },
-                        { field: 'annualCost', operator: 'greater_than', value: 5000 }
+                        { field: 'annualCostEur', operator: 'greater_than', value: 5000 }
                       ]
                     },
                     effect: [{ type: 'REQUIRE_REVIEW', role: 'PROCUREMENT' }],
-                    reason: 'Zakupy SaaS powyżej 5 000 EUR wymagają oceny działu zakupów.',
+                    reason: 'Zakupy SaaS powyżej 5 000 EUR wymagają oceny.',
                     priority: 10
+                  },
+                  {
+                    name: 'Zakup awaryjny (EMERGENCY)',
+                    severity: RuleSeverity.WARNING,
+                    condition: {
+                      field: 'urgency', operator: 'equals', value: 'EMERGENCY'
+                    },
+                    effect: [{ type: 'REQUIRE_REVIEW' }],
+                    reason: 'Wnioski w trybie awaryjnym zawsze wymagają ręcznego przeglądu.',
+                    priority: 30
+                  },
+                  {
+                    name: 'Zakup o bardzo dużej wartości',
+                    severity: RuleSeverity.WARNING,
+                    condition: {
+                      field: 'annualCostEur', operator: 'greater_or_equal', value: 50000
+                    },
+                    effect: [{ type: 'REQUIRE_REVIEW' }],
+                    reason: 'Zakupy o wartości 50 000 EUR i wyższej wymagają specjalnej weryfikacji budżetowej.',
+                    priority: 40
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    })
+
+    // DATA_SECURITY Policy
+    await prisma.policy.create({
+      data: {
+        name: 'Polityka bezpieczeństwa danych',
+        description: 'Zasady przetwarzania i ochrony danych.',
+        domain: PolicyDomain.DATA_SECURITY,
+        status: 'PUBLISHED',
+        ownerId: policyOwner.id,
+        versions: {
+          create: [
+            {
+              version: 1,
+              status: 'PUBLISHED',
+              authorId: policyOwner.id,
+              description: 'Initial version',
+              rules: {
+                create: [
+                  {
+                    name: 'Wymagane DPA przy danych osobowych',
+                    severity: RuleSeverity.WARNING,
+                    condition: {
+                      operator: 'AND',
+                      conditions: [
+                        { field: 'processesPersonalData', operator: 'equals', value: true },
+                        { field: 'hasDpa', operator: 'equals', value: false }
+                      ]
+                    },
+                    effect: [{ type: 'REQUIRE_FIELD', field: 'dpaDocument' }],
+                    reason: 'Przetwarzanie danych osobowych wymaga podpisania umowy powierzenia (DPA).',
+                    priority: 20
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    })
+
+    // VENDOR_RISK Policy
+    await prisma.policy.create({
+      data: {
+        name: 'Polityka zarządzania ryzykiem dostawców',
+        description: 'Ocena ryzyka dostawców i blokady operacyjne.',
+        domain: PolicyDomain.VENDOR_RISK,
+        status: 'PUBLISHED',
+        ownerId: policyOwner.id,
+        versions: {
+          create: [
+            {
+              version: 1,
+              status: 'PUBLISHED',
+              authorId: policyOwner.id,
+              description: 'Initial version',
+              rules: {
+                create: [
+                  {
+                    name: 'Dostawca wysokiego ryzyka',
+                    severity: RuleSeverity.WARNING,
+                    condition: {
+                      field: 'vendorRisk', operator: 'equals', value: 'HIGH'
+                    },
+                    effect: [{ type: 'REQUIRE_REVIEW', role: 'SECURITY' }],
+                    reason: 'Współpraca z dostawcami o wysokim ryzyku wymaga przeglądu.',
+                    priority: 100
+                  },
+                  {
+                    name: 'Dostawca krytycznego ryzyka',
+                    severity: RuleSeverity.BLOCKER,
+                    condition: {
+                      field: 'vendorRisk', operator: 'equals', value: 'CRITICAL'
+                    },
+                    effect: [{ type: 'REJECT' }],
+                    reason: 'Współpraca z dostawcami o krytycznym ryzyku jest zablokowana.',
+                    priority: 110
                   }
                 ]
               }

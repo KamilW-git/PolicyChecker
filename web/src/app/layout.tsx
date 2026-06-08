@@ -50,6 +50,9 @@ export default async function RootLayout({
                     {['AUDITOR', 'ADMIN'].includes(user.role) && (
                       <Link href="/audit" className="px-3 py-2 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition">Audyt</Link>
                     )}
+                    {user.role === 'ADMIN' && (
+                      <Link href="/admin/users" className="px-3 py-2 rounded-md text-sm font-medium text-amber-300 hover:text-amber-200 hover:bg-slate-800 transition">Użytkownicy</Link>
+                    )}
                   </div>
                 )}
               </div>

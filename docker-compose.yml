@@ -20,10 +20,11 @@ services:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://policyuser:policypassword@db:5432/policychecker?schema=public
+      - JWT_SECRET=w_produkcji_uzyj_mocnego_sekretu_losowego_stringa
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
     shm_size: '2gb'
-    command: npm run dev
+    command: sh -c "npx prisma generate && npx prisma migrate deploy && npx tsx prisma/seed.ts && npm run dev"
     tty: true
     stdin_open: true
     depends_on:
