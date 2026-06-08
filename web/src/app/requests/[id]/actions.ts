@@ -3,6 +3,8 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
+import { writeFile, mkdir } from 'fs/promises'
+import path from 'path'
 
 export async function overrideRequest(requestId: string, formData: FormData) {
   const user = await getCurrentUser()
@@ -10,13 +12,57 @@ export async function overrideRequest(requestId: string, formData: FormData) {
     throw new Error('Unauthorized')
   }
 
-  const decision = formData.get('decision') as any // 'APPROVED' | 'APPROVED_WITH_EXCEPTION' | 'REJECTED' | 'REQUIRES_REVIEW'
+  const outcome = formData.get('decision') as string
   const reason = formData.get('reason') as string
   const comment = formData.get('comment') as string
   const approvedBy = formData.get('approvedBy') as string
+  const file = formData.get('attachment') as File | null
 
-  if (!reason || !decision || !comment || !approvedBy) {
+  if (!reason || !outcome || !comment || !approvedBy) {
     throw new Error('Brak wymaganych danych')
+  }
+
+  let attachmentPath: string | null = null
+  if (file && file.size > 0) {
+    if (file.size > 10 * 1024 * 1024) throw new Error('Plik za duży (max 10MB)')
+    
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'overrides')
+    try {
+      await mkdir(uploadDir, { recursive: true })
+    } catch (e) {}
+
+    const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+    const filePath = path.join(uploadDir, uniqueName)
+    
+    await writeFile(filePath, buffer)
+    attachmentPath = `/uploads/overrides/${uniqueName}`
+  }
+
+  let overrideDecision: any
+  let overrideStatus: any
+
+  switch (outcome) {
+    case 'APPROVED':
+      overrideDecision = 'APPROVED'
+      overrideStatus = 'APPROVED'
+      break
+    case 'APPROVED_WITH_EXCEPTION':
+      overrideDecision = 'APPROVED'
+      overrideStatus = 'APPROVED_WITH_EXCEPTION'
+      break
+    case 'REJECTED':
+      overrideDecision = 'REJECTED'
+      overrideStatus = 'REJECTED'
+      break
+    case 'REQUIRES_REVIEW':
+      overrideDecision = 'REQUIRES_REVIEW'
+      overrideStatus = 'IN_REVIEW'
+      break
+    default:
+      throw new Error('Nieznana decyzja')
   }
 
   await prisma.$transaction(async (tx) => {
@@ -31,23 +77,21 @@ export async function overrideRequest(requestId: string, formData: FormData) {
       data: {
         requestId,
         originalDecision,
-        overrideDecision: decision,
+        overrideDecision,
+        overrideStatus,
         reason,
         comment,
         approvedBy,
-        createdById: user.id
+        createdById: user.id,
+        attachmentPath
       }
     })
 
-    // Aktualizacja wniosku
-    const newStatus = decision.includes('APPROVED') ? 'APPROVED' : 
-                      decision === 'REJECTED' ? 'REJECTED' : 'IN_REVIEW'
-    
+    // Aktualizacja statusu wniosku (NFR-7: nie nadpisuj systemowej decision)
     await tx.request.update({
       where: { id: requestId },
       data: {
-        status: newStatus as any,
-        decision
+        status: overrideStatus
       }
     })
 
@@ -60,7 +104,8 @@ export async function overrideRequest(requestId: string, formData: FormData) {
         userId: user.id,
         details: {
           originalDecision,
-          overrideDecision: decision,
+          overrideDecision,
+          overrideStatus,
           reason,
           approvedBy
         }
