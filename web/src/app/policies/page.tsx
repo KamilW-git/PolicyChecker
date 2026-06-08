@@ -26,9 +26,14 @@ export default async function PoliciesPage() {
           )}
         </div>
         {['POLICY_OWNER', 'ADMIN'].includes(user?.role || '') && (
-          <button className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition shadow-sm opacity-50 cursor-not-allowed" title="Funkcja dostępna w kolejnych wersjach">
-            + Nowa Polityka
-          </button>
+          <div className="flex gap-3">
+            <Link href="/policies/test" className="px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition shadow-sm">
+              Testuj Reguły
+            </Link>
+            <Link href="/policies/new" className="px-4 py-2 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition shadow-sm">
+              + Nowa Polityka
+            </Link>
+          </div>
         )}
       </div>
 
