@@ -2,8 +2,11 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { prisma } from './prisma'
 
-const secretKey = 'super-secret-key-for-mvp-only'
-const key = new TextEncoder().encode(secretKey)
+const secret = process.env.JWT_SECRET
+if (!secret && process.env.NODE_ENV === 'production') {
+  throw new Error('JWT_SECRET is required in production')
+}
+const key = new TextEncoder().encode(secret || 'fallback_secret_for_development')
 
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
