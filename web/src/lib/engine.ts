@@ -1,4 +1,19 @@
 import { Decision, Rule } from '@prisma/client'
+import { toEur } from './currency'
+
+/** Wartość pola do oceny — annualCost/annualCostEur zawsze w EUR. */
+function resolveFieldValue(field: string, input: Record<string, any>): any {
+  if (field === 'annualCost' || field === 'annualCostEur') {
+    if (input.annualCostEur != null && input.annualCostEur !== '') {
+      return Number(input.annualCostEur)
+    }
+    if (input.annualCost != null && input.currency) {
+      return toEur(Number(input.annualCost), String(input.currency))
+    }
+    return input.annualCost != null ? Number(input.annualCost) : undefined
+  }
+  return input[field]
+}
 
 export type Operator = 
   | 'equals' | 'not_equals' 
@@ -48,7 +63,7 @@ function evaluateCondition(condition: any, input: Record<string, any>): boolean 
 
   // Simple Condition
   const simple = condition as SimpleCondition
-  const actualValue = input[simple.field]
+  const actualValue = resolveFieldValue(simple.field, input)
 
   switch (simple.operator) {
     case 'equals':

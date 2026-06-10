@@ -176,4 +176,27 @@ describe('Policy Engine', () => {
     const result2 = evaluateRequest(req2, rules)
     expect(result2.decision).toBe('REJECTED')
   })
+
+  it('przelicza annualCost na EUR gdy reguła używa pola annualCost (legacy)', () => {
+    const rules = [{
+      id: 'r1', name: 'SaaS powyzej 5000 EUR', priority: 1, enabled: true,
+      condition: {
+        operator: 'AND',
+        conditions: [
+          { field: 'category', operator: 'equals', value: 'SAAS' },
+          { field: 'annualCost', operator: 'greater_than', value: 5000 }
+        ]
+      },
+      effect: [{ type: 'REQUIRE_REVIEW', role: 'PROCUREMENT' }],
+      policyVersionId: 'v1'
+    } as any]
+
+    // 6000 USD ≈ 5520 EUR — powyżej progu
+    const usd = { ...baseRequest, category: 'SAAS', currency: 'USD', annualCost: 6000 }
+    expect(evaluateRequest(usd, rules).decision).toBe('REQUIRES_REVIEW')
+
+    // 6000 PLN ≈ 1380 EUR — poniżej progu
+    const pln = { ...baseRequest, category: 'SAAS', currency: 'PLN', annualCost: 6000 }
+    expect(evaluateRequest(pln, rules).decision).toBe('APPROVED')
+  })
 })

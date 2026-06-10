@@ -21,7 +21,7 @@ interface Effect {
 
 const FIELDS = [
   { id: 'category', label: 'Kategoria' },
-  { id: 'annualCost', label: 'Koszt roczny (EUR)' },
+  { id: 'annualCostEur', label: 'Koszt roczny (przeliczony na EUR)' },
   { id: 'currency', label: 'Waluta' },
   { id: 'department', label: 'Departament' },
   { id: 'vendorRisk', label: 'Ryzyko dostawcy (LOW/MEDIUM/HIGH/CRITICAL)' },
@@ -62,7 +62,7 @@ export default function RuleBuilder({
   defaultEffect?: any
 }) {
   const [conditions, setConditions] = useState<Condition[]>(() => {
-    if (!defaultCondition) return [{ field: 'annualCost', operator: 'greater_than', value: '5000' }]
+    if (!defaultCondition) return [{ field: 'annualCostEur', operator: 'greater_than', value: '5000' }]
     if (defaultCondition.operator === 'AND' && Array.isArray(defaultCondition.conditions)) {
       return defaultCondition.conditions.map((c: any) => ({ 
         ...c, 
