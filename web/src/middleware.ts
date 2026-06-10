@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const secret = process.env.JWT_SECRET || 'fallback_secret_for_development'
-const key = new TextEncoder().encode(secret)
+function getJwtKey(): Uint8Array | null {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') return null
+    return new TextEncoder().encode('fallback_secret_for_development')
+  }
+  return new TextEncoder().encode(secret)
+}
 
 export async function middleware(request: NextRequest) {
   const session = request.cookies.get('session')?.value
@@ -14,6 +20,11 @@ export async function middleware(request: NextRequest) {
   }
 
   if (session) {
+    const key = getJwtKey()
+    if (!key) {
+      return NextResponse.json({ error: 'Server misconfiguration: JWT_SECRET required' }, { status: 500 })
+    }
+
     try {
       const { payload } = await jwtVerify(session, key, { algorithms: ['HS256'] })
       const role = payload.role as string

@@ -8,7 +8,9 @@
     "start": "next start -H 0.0.0.0",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "screenshots:docker": "docker run --rm --network policychecker_default -v \"../:/app\" -w /app/web -e BASE_URL=http://policychecker-app-1:3000 mcr.microsoft.com/playwright:v1.52.0-jammy sh -c \"npm install playwright@1.52.0 --legacy-peer-deps --no-save --silent && node scripts/capture-screenshots.mjs\""
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -28,6 +30,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "playwright": "1.52.0",
     "prisma": "^5.22.0",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",

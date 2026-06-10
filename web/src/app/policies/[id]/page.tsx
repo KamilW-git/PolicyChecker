@@ -273,7 +273,7 @@ export default async function PolicyDetailsPage({
         </div>
       </div>
 
-      {canEditRules && searchParams.newRule !== 'true' && (
+      {canEditRules && newRule !== 'true' && (
         <div className="mt-8 flex justify-end">
           <Link href={`/policies/${id}?newRule=true`} className="px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
             + Dodaj Nową Regułę
@@ -281,7 +281,7 @@ export default async function PolicyDetailsPage({
         </div>
       )}
 
-      {canEditRules && searchParams.newRule === 'true' && (
+      {canEditRules && newRule === 'true' && (
         <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 overflow-hidden text-white mt-8">
           <div className="px-8 py-5 border-b border-slate-800 bg-slate-950/50">
             <h2 className="text-lg font-bold">Dodaj Nową Regułę (JSON Mode)</h2>

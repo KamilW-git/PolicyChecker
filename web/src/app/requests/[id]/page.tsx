@@ -156,7 +156,7 @@ export default async function RequestDetailsPage({
                 </div>
                 {ov.attachmentPath && (
                   <div className="col-span-2 mt-2">
-                    <a href={ov.attachmentPath} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded hover:bg-slate-200 transition border border-slate-200">
+                    <a href={`/api/overrides/${ov.id}`} className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 text-sm font-medium rounded hover:bg-slate-200 transition border border-slate-200">
                       📄 Pobierz załącznik
                     </a>
                   </div>
@@ -308,6 +308,33 @@ export default async function RequestDetailsPage({
               </div>
             )}
 
+            {((evaluation.resultSnapshot as any)?.nextSteps as string[])?.length > 0 && (
+              <div className="mt-6 bg-slate-800/50 border border-slate-700 p-5 rounded-xl">
+                <h4 className="text-sm font-bold text-slate-300 uppercase tracking-wider mb-3">Następne kroki</h4>
+                <ol className="list-decimal list-inside space-y-2 text-slate-300">
+                  {((evaluation.resultSnapshot as any).nextSteps as string[]).map((step, idx) => (
+                    <li key={idx}>{step}</li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {((evaluation.appliedPolicyVersions as any[])?.length > 0) && (
+              <div className="mt-6 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="bg-slate-800 px-4 py-3 border-b border-slate-700">
+                  <h4 className="font-semibold text-slate-200">Zastosowane polityki</h4>
+                </div>
+                <div className="divide-y divide-slate-800">
+                  {(evaluation.appliedPolicyVersions as { policyName: string; version: number; policyId: string }[]).map((pv) => (
+                    <div key={`${pv.policyId}-${pv.version}`} className="p-4 bg-slate-900/50 flex justify-between items-center">
+                      <span className="font-medium text-slate-200">{pv.policyName}</span>
+                      <span className="text-xs text-slate-400">wersja {pv.version}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               {((evaluation.resultSnapshot as any)?.missingFields as string[])?.length > 0 && (
                 <div className="bg-amber-950/30 border border-amber-900/50 p-4 rounded-xl">
@@ -385,7 +412,7 @@ export default async function RequestDetailsPage({
                       <p className="text-xs text-slate-500 font-medium">{att.type} • {att.uploadedAt.toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <a href={att.path} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition">
+                  <a href={`/api/attachments/${att.id}`} className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 transition">
                     Pobierz
                   </a>
                 </div>

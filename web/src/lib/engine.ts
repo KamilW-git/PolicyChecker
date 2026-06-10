@@ -1,14 +1,24 @@
 import { Decision, Rule } from '@prisma/client'
 import { toEur } from './currency'
 
-/** Wartość pola do oceny — annualCost/annualCostEur zawsze w EUR. */
+/** Wartość pola do oceny — progi kosztowe zawsze w EUR. */
 function resolveFieldValue(field: string, input: Record<string, any>): any {
-  if (field === 'annualCost' || field === 'annualCostEur') {
+  if (field === 'annualCostEur') {
     if (input.annualCostEur != null && input.annualCostEur !== '') {
       return Number(input.annualCostEur)
     }
     if (input.annualCost != null && input.currency) {
       return toEur(Number(input.annualCost), String(input.currency))
+    }
+    return input.annualCost != null ? Number(input.annualCost) : undefined
+  }
+  if (field === 'annualCost') {
+    // Legacy: reguła na annualCost — przelicz z waluty (próg w EUR)
+    if (input.annualCost != null && input.currency) {
+      return toEur(Number(input.annualCost), String(input.currency))
+    }
+    if (input.annualCostEur != null && input.annualCostEur !== '') {
+      return Number(input.annualCostEur)
     }
     return input.annualCost != null ? Number(input.annualCost) : undefined
   }
@@ -95,10 +105,18 @@ function evaluateCondition(condition: any, input: Record<string, any>): boolean 
   }
 }
 
+export type RuleWithPolicyVersion = Rule & {
+  policyVersion: {
+    policyId: string
+    version: number
+    policy: { name: string }
+  }
+}
+
 export interface EngineResult {
   decision: Decision
   reasons: string[]
-  appliedRules: Rule[]
+  appliedRules: RuleWithPolicyVersion[]
   missingFields: string[]
   requiredRoles: string[]
   riskPoints: number
@@ -112,8 +130,8 @@ const DECISION_WEIGHT: Record<Decision, number> = {
   APPROVED: 1
 }
 
-export function evaluateRequest(inputSnapshot: Record<string, any>, rules: Rule[]): EngineResult {
-  const appliedRules: Rule[] = []
+export function evaluateRequest(inputSnapshot: Record<string, any>, rules: RuleWithPolicyVersion[]): EngineResult {
+  const appliedRules: RuleWithPolicyVersion[] = []
   const reasons: string[] = []
   let decision: Decision = 'APPROVED'
   
@@ -134,7 +152,7 @@ export function evaluateRequest(inputSnapshot: Record<string, any>, rules: Rule[
       appliedRules.push(rule)
       reasons.push(rule.reason)
 
-      const effects = Array.isArray(rule.effect) ? rule.effect as RuleEffect[] : []
+      const effects = Array.isArray(rule.effect) ? (rule.effect as unknown as RuleEffect[]) : []
       
       // Fallback (P1-11): Jeśli severity = BLOCKER, a nie ma efektu REJECT, potraktuj to jako REJECT
       const hasReject = effects.some(e => e.type === 'REJECT')

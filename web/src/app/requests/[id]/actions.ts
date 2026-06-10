@@ -3,8 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { getCurrentUser } from '@/lib/session'
 import { revalidatePath } from 'next/cache'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { savePrivateFile } from '@/lib/attachments'
 
 export async function overrideRequest(requestId: string, formData: FormData) {
   const user = await getCurrentUser()
@@ -25,20 +24,8 @@ export async function overrideRequest(requestId: string, formData: FormData) {
   let attachmentPath: string | null = null
   if (file && file.size > 0) {
     if (file.size > 10 * 1024 * 1024) throw new Error('Plik za duży (max 10MB)')
-    
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-    
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'overrides')
-    try {
-      await mkdir(uploadDir, { recursive: true })
-    } catch (e) {}
-
-    const uniqueName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    const filePath = path.join(uploadDir, uniqueName)
-    
-    await writeFile(filePath, buffer)
-    attachmentPath = `/uploads/overrides/${uniqueName}`
+    const buffer = Buffer.from(await file.arrayBuffer())
+    attachmentPath = await savePrivateFile('overrides', file.name, buffer)
   }
 
   let overrideDecision: any
