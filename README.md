@@ -59,6 +59,8 @@ In your browser: **http://localhost:3000**
 
 ### 4. Sign in
 
+The database is pre-seeded with **3 policies** and **5 sample requests** (draft, auto-approved, in review, needs information, rejected) so you can explore the workflow immediately. Titles are prefixed with `[Sample]`.
+
 All test accounts use the password **`test1234`**:
 
 | Email | Role |
