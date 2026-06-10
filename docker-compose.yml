@@ -30,20 +30,7 @@ services:
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
     shm_size: '2gb'
-    command: >
-      sh -c "
-        set -e;
-        npx prisma generate;
-        i=0;
-        until npx prisma migrate deploy; do
-          i=$$((i+1));
-          if [ $$i -ge 30 ]; then echo 'Baza niedostepna po 30 probach'; exit 1; fi;
-          echo \"Czekam na baze... ($$i/30)\";
-          sleep 2;
-        done;
-        npx tsx prisma/seed.ts;
-        npm run dev
-      "
+    command: sh docker-entrypoint.sh
     tty: true
     stdin_open: true
     restart: unless-stopped
