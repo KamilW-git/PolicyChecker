@@ -46,7 +46,7 @@ export default async function AuditPage({
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Dziennik Audytu</h1>
+          <h1 className="text-3xl font-bold text-white">Dziennik Audytu</h1>
           <p className="text-slate-500 mt-2">Pełna historia zdarzeń systemowych i automatycznych ocen.</p>
         </div>
         <form action={async () => {
@@ -90,7 +90,7 @@ export default async function AuditPage({
                   <tr key={ev.id} className="hover:bg-slate-50/50">
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500">{ev.createdAt.toLocaleString()}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{ev.user?.name || 'System'}</td>
-                    <td className="px-6 py-4 font-mono text-xs">{ev.action}</td>
+                    <td className="px-6 py-4 font-mono text-xs text-black">{ev.action}</td>
                     <td className="px-6 py-4 text-slate-600">{ev.entity} {ev.entityId && <span className="text-xs text-slate-400">({ev.entityId.slice(0,8)}...)</span>}</td>
                     <td className="px-6 py-4 text-slate-500 max-w-sm truncate" title={JSON.stringify(ev.details)}>
                       {JSON.stringify(ev.details)}

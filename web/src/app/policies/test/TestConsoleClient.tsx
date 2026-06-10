@@ -56,7 +56,7 @@ export default function TestConsoleClient({ policyVersions }: { policyVersions: 
               name="inputJson" 
               defaultValue={defaultJson}
               rows={15}
-              className="w-full px-4 py-3 font-mono text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 font-mono text-sm border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-black"
               required
             ></textarea>
             <p className="text-xs text-slate-500 mt-2">Dostosuj wartości w obiekcie JSON, aby przetestować różne scenariusze (np. brak DPA).</p>

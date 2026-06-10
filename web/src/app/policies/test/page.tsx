@@ -23,7 +23,7 @@ export default async function TestConsolePage() {
           <Link href="/policies" className="text-slate-500 hover:text-slate-800 transition mb-2 inline-block">
             &larr; Wróć do polityk
           </Link>
-          <h1 className="text-3xl font-bold text-slate-900">Konsola Testowania Reguł</h1>
+          <h1 className="text-3xl font-bold text-white">Konsola Testowania Reguł</h1>
           <p className="text-slate-500 mt-2">Przetestuj działanie zdefiniowanych reguł na sztucznych danych bez tworzenia wniosku.</p>
         </div>
       </div>

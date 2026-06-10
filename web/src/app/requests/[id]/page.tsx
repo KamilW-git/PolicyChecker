@@ -449,7 +449,7 @@ export default async function RequestDetailsPage({
           })}
 
           <form action={addComment.bind(null, request.id)} className="pt-4 border-t border-slate-100">
-            <textarea name="content" required rows={3} placeholder="Dodaj komentarz..." className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none mb-3"></textarea>
+            <textarea name="content" required rows={3} placeholder="Dodaj komentarz..." className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:ring-2 focus:ring-blue-500 outline-none mb-3 text-black"></textarea>
             <div className="flex justify-between items-center">
               {['REVIEWER', 'ADMIN'].includes(user?.role || '') ? (
                 <label className="flex items-center gap-2 text-sm text-slate-600">

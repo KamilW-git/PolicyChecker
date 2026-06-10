@@ -19,7 +19,7 @@ export default async function AdminUsersPage() {
     <div className="max-w-4xl mx-auto py-8 space-y-6">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Zarządzanie Użytkownikami</h1>
+          <h1 className="text-3xl font-bold text-white">Zarządzanie Użytkownikami</h1>
           <p className="text-slate-500 mt-2">Przeglądaj użytkowników i zmieniaj ich role w systemie (RBAC).</p>
         </div>
       </div>
