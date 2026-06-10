@@ -4,16 +4,17 @@ import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
 import { addRuleAction, editRuleAction, deleteRuleAction, createDraftVersion, submitForReview, approveAndPublish, rejectVersion } from './actions'
 import RuleBuilder from '@/components/RuleBuilder'
+import DeletePolicyButton from './DeletePolicyButton'
 
 export default async function PolicyDetailsPage({
   params,
   searchParams
 }: {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ editRuleId?: string, success?: string, newRule?: string }>
+  searchParams: Promise<{ editRuleId?: string, success?: string, newRule?: string, error?: string }>
 }) {
   const { id } = await params
-  const { editRuleId, success, newRule } = await searchParams
+  const { editRuleId, success, newRule, error } = await searchParams
   const user = await getCurrentUser()
   
   const policy = await prisma.policy.findUnique({
@@ -28,10 +29,22 @@ export default async function PolicyDetailsPage({
 
   if (!policy || policy.versions.length === 0) return notFound()
 
-  // Zawsze pokazujemy najnowszą wersję w MVP
   const latestVersion = policy.versions[0]
-  const activeRules = latestVersion.rules
+  const canManagePolicy = ['POLICY_OWNER', 'POLICY_APPROVER', 'ADMIN'].includes(user?.role || '')
 
+  // Wersje robocze / w review widzą tylko Owner, Approver, Admin
+  let displayVersion = latestVersion
+  if (!canManagePolicy) {
+    if (latestVersion.status === 'PUBLISHED') {
+      displayVersion = latestVersion
+    } else {
+      const publishedVersion = policy.versions.find(v => v.status === 'PUBLISHED')
+      if (!publishedVersion) return notFound()
+      displayVersion = publishedVersion
+    }
+  }
+
+  const activeRules = displayVersion.rules
   const isOwnerOrAdmin = ['POLICY_OWNER', 'ADMIN'].includes(user?.role || '')
   const isApproverOrAdmin = ['POLICY_APPROVER', 'ADMIN'].includes(user?.role || '')
 
@@ -59,6 +72,13 @@ export default async function PolicyDetailsPage({
         </div>
       )}
 
+      {error === 'no_rules' && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl flex items-center justify-between">
+          <span className="font-medium">Dodaj co najmniej jedną regułę przed przekazaniem polityki do zatwierdzenia.</span>
+          <Link href={`/policies/${id}`} className="text-amber-700 hover:text-amber-900">✕</Link>
+        </div>
+      )}
+
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-8 py-6 border-b border-slate-100 bg-slate-50 flex justify-between items-start">
           <div>
@@ -66,32 +86,39 @@ export default async function PolicyDetailsPage({
             <h1 className="text-2xl font-bold text-slate-900 mt-1">{policy.name}</h1>
             <p className="text-sm text-slate-500 mt-1">{policy.description}</p>
           </div>
+          {user?.role === 'ADMIN' && (
+            <DeletePolicyButton policyId={policy.id} />
+          )}
         </div>
 
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white">
           <div>
             <h3 className="font-bold text-slate-900 flex items-center gap-3">
-              Najnowsza Wersja (v{latestVersion.version})
+              {displayVersion.id !== latestVersion.id ? (
+                <>Opublikowana Wersja (v{displayVersion.version})</>
+              ) : (
+                <>Najnowsza Wersja (v{displayVersion.version})</>
+              )}
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold
-                ${latestVersion.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' : 
-                  latestVersion.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
+                ${displayVersion.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' : 
+                  displayVersion.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
                   'bg-slate-100 text-slate-800'}`}>
-                {latestVersion.status}
+                {displayVersion.status}
               </span>
             </h3>
             <p className="text-sm text-slate-500 mt-2">
-              {latestVersion.status === 'PUBLISHED' ? 'Ta wersja jest aktywnie wykorzystywana przez silnik oceny.' :
-               latestVersion.status === 'DRAFT' ? 'Wersja robocza. Możesz modyfikować reguły przed przekazaniem do zatwierdzenia.' :
+              {displayVersion.status === 'PUBLISHED' ? 'Ta wersja jest aktywnie wykorzystywana przez silnik oceny.' :
+               displayVersion.status === 'DRAFT' ? 'Wersja robocza. Możesz modyfikować reguły przed przekazaniem do zatwierdzenia.' :
                'Oczekuje na zatwierdzenie przez Policy Approvera.'}
             </p>
-            {latestVersion.description && (
+            {displayVersion.description && (
               <p className="text-sm text-slate-700 mt-2 p-2 bg-slate-50 border border-slate-200 rounded">
-                <span className="font-semibold">Opis zmian:</span> {latestVersion.description}
+                <span className="font-semibold">Opis zmian:</span> {displayVersion.description}
               </p>
             )}
-            {(latestVersion.validFrom || latestVersion.validTo) && (
+            {(displayVersion.validFrom || displayVersion.validTo) && (
               <p className="text-xs text-slate-500 mt-2 font-mono">
-                Obowiązuje: {latestVersion.validFrom ? latestVersion.validFrom.toLocaleDateString() : 'Brak'} - {latestVersion.validTo ? latestVersion.validTo.toLocaleDateString() : 'Brak'}
+                Obowiązuje: {displayVersion.validFrom ? displayVersion.validFrom.toLocaleDateString() : 'Brak'} - {displayVersion.validTo ? displayVersion.validTo.toLocaleDateString() : 'Brak'}
               </p>
             )}
           </div>
@@ -107,11 +134,17 @@ export default async function PolicyDetailsPage({
             )}
 
             {isOwnerOrAdmin && latestVersion.status === 'DRAFT' && (
-              <form action={submitForReview.bind(null, latestVersion.id)}>
-                <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg text-sm transition">
-                  Przekaż do zatwierdzenia
-                </button>
-              </form>
+              latestVersion.rules.length > 0 ? (
+                <form action={submitForReview.bind(null, latestVersion.id)}>
+                  <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg text-sm transition">
+                    Przekaż do zatwierdzenia
+                  </button>
+                </form>
+              ) : (
+                <span className="text-sm text-amber-700 bg-amber-50 border border-amber-200 px-3 py-2 rounded-lg">
+                  Dodaj regułę, aby przekazać do zatwierdzenia
+                </span>
+              )
             )}
 
             {isApproverOrAdmin && latestVersion.status === 'IN_REVIEW' && (

@@ -4,7 +4,12 @@ import { getCurrentUser } from '@/lib/session'
 
 export default async function PoliciesPage() {
   const user = await getCurrentUser()
+  const canManagePolicy = ['POLICY_OWNER', 'POLICY_APPROVER', 'ADMIN'].includes(user?.role || '')
+
   const policies = await prisma.policy.findMany({
+    where: canManagePolicy
+      ? {}
+      : { versions: { some: { status: 'PUBLISHED' } } },
     orderBy: { domain: 'asc' },
     include: {
       versions: {

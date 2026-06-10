@@ -171,7 +171,9 @@ export async function submitForReview(versionId: string) {
     include: { _count: { select: { rules: true } } }
   })
   if (!versionObj) throw new Error('Not found')
-  if (versionObj._count.rules === 0) throw new Error('Wersja musi zawierać co najmniej jedną regułę, aby mogła zostać przekazana do zatwierdzenia')
+  if (versionObj._count.rules === 0) {
+    redirect(`/policies/${versionObj.policyId}?error=no_rules`)
+  }
 
   const version = await prisma.policyVersion.update({
     where: { id: versionId },
@@ -256,3 +258,37 @@ export async function rejectVersion(versionId: string) {
   revalidatePath(`/policies/${version.policyId}`)
 }
 
+export async function deletePolicyAction(policyId: string) {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'ADMIN') throw new Error('Unauthorized')
+
+  const matches = await prisma.policyEvaluationRuleMatch.count({
+    where: { policyVersion: { policyId: policyId } }
+  })
+
+  if (matches > 0) {
+    throw new Error('Nie można usunąć polityki, która została już użyta w ewaluacji wniosków. Zamiast tego zarchiwizuj ją (jeśli to możliwe) lub utwórz nową wersję z wyłączonymi regułami.')
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.rule.deleteMany({
+      where: { policyVersion: { policyId: policyId } }
+    })
+    await tx.policyVersion.deleteMany({
+      where: { policyId: policyId }
+    })
+    await tx.policy.delete({
+      where: { id: policyId }
+    })
+    await tx.auditEvent.create({
+      data: {
+        action: 'DELETE_POLICY',
+        entity: 'Policy',
+        entityId: policyId,
+        userId: user.id
+      }
+    })
+  })
+
+  redirect('/policies')
+}
