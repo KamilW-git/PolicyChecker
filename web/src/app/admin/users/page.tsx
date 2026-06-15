@@ -3,6 +3,9 @@ import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import { updateUserRole } from './actions'
 import { Role } from '@prisma/client'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { roleLabel } from '@/lib/labels'
 
 export default async function AdminUsersPage() {
   const user = await getCurrentUser()
@@ -16,15 +19,13 @@ export default async function AdminUsersPage() {
   })
 
   return (
-    <div className="max-w-4xl mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Zarządzanie Użytkownikami</h1>
-          <p className="text-slate-500 mt-2">Przeglądaj użytkowników i zmieniaj ich role w systemie (RBAC).</p>
-        </div>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-6">
+      <PageHeader 
+        title="Zarządzanie Użytkownikami"
+        description="Przeglądaj użytkowników i zmieniaj ich role w systemie (RBAC)."
+      />
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -41,8 +42,8 @@ export default async function AdminUsersPage() {
                   <td className="px-6 py-4 font-medium text-slate-900">{u.name}</td>
                   <td className="px-6 py-4 text-slate-500">{u.email}</td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">
-                      {u.role}
+                    <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold bg-slate-100 text-slate-800">
+                      {roleLabel(u.role)}
                     </span>
                   </td>
                   <td className="px-6 py-4">
@@ -50,15 +51,15 @@ export default async function AdminUsersPage() {
                       <select 
                         name="role" 
                         defaultValue={u.role} 
-                        className="text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-500 text-slate-900"
+                        className="text-sm border border-slate-300 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-[var(--color-accent)] text-slate-900"
                         disabled={u.id === user.id} // Nie pozwól adminowi zmienić swojej własnej roli by zapobiec lock-out
                       >
                         {Object.values(Role).map(role => (
-                          <option key={role} value={role}>{role}</option>
+                          <option key={role} value={role}>{roleLabel(role)}</option>
                         ))}
                       </select>
                       {u.id !== user.id && (
-                        <button type="submit" className="px-2 py-1 bg-slate-800 text-white rounded text-xs font-medium hover:bg-slate-700 transition">
+                        <button type="submit" className="px-3 py-1 bg-[var(--color-accent)] text-white rounded text-xs font-medium hover:opacity-90 transition">
                           Zapisz
                         </button>
                       )}
@@ -69,7 +70,7 @@ export default async function AdminUsersPage() {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }

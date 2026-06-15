@@ -57,7 +57,7 @@ export default async function NewPolicyPage() {
           </div>
 
           <div className="pt-4 flex justify-end">
-            <button type="submit" className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition">
+            <button type="submit" className="px-6 py-3 bg-[var(--color-accent)] hover:opacity-90 text-white font-medium rounded-lg transition">
               Utwórz politykę
             </button>
           </div>

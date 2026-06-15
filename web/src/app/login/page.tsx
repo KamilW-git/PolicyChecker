@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react'
 import { loginAction } from './actions'
+import { ShieldCheck } from 'lucide-react'
 
 export default function LoginPage() {
   const [state, formAction, pending] = useActionState(
@@ -10,14 +11,14 @@ export default function LoginPage() {
   )
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden">
-        <div className="p-8 text-center bg-slate-900">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-white font-bold text-xl">✓</span>
+    <div className="min-h-screen bg-[#F5F5F7] flex items-center justify-center p-6">
+      <div className="max-w-md w-full bg-white rounded-2xl shadow-sm border border-slate-200/80 overflow-hidden">
+        <div className="p-8 text-center bg-[#F5F5F7]/50 border-b border-slate-200/80">
+          <div className="w-12 h-12 bg-[var(--color-accent)] rounded-xl flex items-center justify-center mx-auto mb-4">
+            <ShieldCheck size={28} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">PolicyChecker</h1>
-          <p className="text-slate-400 mt-2 text-sm">Zaloguj się, aby kontynuować</p>
+          <h1 className="text-2xl font-bold text-slate-900">PolicyChecker</h1>
+          <p className="text-slate-500 mt-2 text-sm">Zaloguj się, aby kontynuować</p>
         </div>
 
         <form action={formAction} className="p-8 space-y-6">
@@ -34,7 +35,7 @@ export default function LoginPage() {
                 type="email"
                 name="email"
                 required
-                className="w-full px-4 py-2 text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2 text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent outline-none transition"
               />
             </div>
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
                 type="password"
                 name="password"
                 required
-                className="w-full px-4 py-2 text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent outline-none transition"
+                className="w-full px-4 py-2 text-black border border-slate-300 rounded-lg focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent outline-none transition"
               />
             </div>
           </div>
@@ -52,7 +53,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={pending}
-            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-[var(--color-accent)] text-white font-bold py-3 rounded-lg hover:opacity-90 transition disabled:opacity-50"
           >
             {pending ? 'Logowanie...' : 'Zaloguj się'}
           </button>

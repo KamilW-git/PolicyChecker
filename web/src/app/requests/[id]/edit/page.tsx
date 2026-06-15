@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/lib/session'
-import RequestForm from '../../RequestForm'
+import RequestWizard from '../../RequestWizard'
 import { updateRequest, resubmitRequest } from '../../actions'
 
 export default async function EditRequestPage({
@@ -47,18 +47,7 @@ export default async function EditRequestPage({
 
   return (
     <div className="max-w-2xl mx-auto py-8">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="px-8 py-6 border-b border-slate-100 bg-slate-50">
-          <h1 className="text-2xl font-bold text-slate-900">
-            {request.status === 'DRAFT' ? 'Edycja Szkicu' : 'Uzupełnij Brakujące Informacje'}
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Zaktualizuj szczegóły wniosku.
-          </p>
-        </div>
-        
-        <RequestForm action={formAction} users={users} defaultValues={defaultValues} />
-      </div>
+      <RequestWizard action={formAction} users={users} defaultValues={defaultValues} />
     </div>
   )
 }
