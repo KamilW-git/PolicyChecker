@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import TestConsoleClient from './TestConsoleClient'
+import { PageHeader } from '@/components/ui/PageHeader'
 
 export default async function TestConsolePage() {
   const user = await getCurrentUser()
@@ -18,15 +19,15 @@ export default async function TestConsolePage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/policies" className="text-slate-500 hover:text-slate-800 transition mb-2 inline-block">
-            &larr; Wróć do polityk
-          </Link>
-          <h1 className="text-3xl font-bold text-white">Konsola Testowania Reguł</h1>
-          <p className="text-slate-500 mt-2">Przetestuj działanie zdefiniowanych reguł na sztucznych danych bez tworzenia wniosku.</p>
-        </div>
+      <div className="sticky top-0 z-20 bg-[#F5F5F7]/90 backdrop-blur-md pt-4 pb-4 mb-2 border-b border-slate-200">
+        <Link href="/policies" className="text-slate-500 hover:text-slate-800 transition text-sm font-medium">
+          &larr; Wróć do polityk
+        </Link>
       </div>
+      <PageHeader 
+        title="Konsola testowania reguł"
+        description="Przetestuj działanie zdefiniowanych reguł na sztucznych danych bez tworzenia wniosku."
+      />
 
       <TestConsoleClient policyVersions={policyVersions} />
     </div>
