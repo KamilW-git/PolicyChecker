@@ -1,10 +1,13 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import { Shield, X } from 'lucide-react'
 import { getCurrentUser } from '@/lib/session'
 import { addRuleAction, editRuleAction, deleteRuleAction, createDraftVersion, submitForReview, approveAndPublish, rejectVersion } from './actions'
 import RuleBuilder from '@/components/RuleBuilder'
 import DeletePolicyButton from './DeletePolicyButton'
+import { policyVersionStatusLabel, auditActionLabel, domainLabel } from '@/lib/labels'
+import { Card } from '@/components/ui/Card'
 
 export default async function PolicyDetailsPage({
   params,
@@ -59,30 +62,30 @@ export default async function PolicyDetailsPage({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center gap-4 mb-8">
-        <Link href="/policies" className="text-slate-500 hover:text-slate-800 transition">
-          &larr; Wróć do listy polityk
+      <div className="sticky top-0 z-20 bg-[#F5F5F7]/90 backdrop-blur-md pt-4 pb-4 mb-6 border-b border-slate-200">
+        <Link href="/policies" className="text-slate-500 hover:text-slate-800 transition text-sm font-medium">
+          &larr; Polityki / {policy.name.length > 30 ? policy.name.substring(0, 30) + '...' : policy.name}
         </Link>
       </div>
 
       {success && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 rounded-xl flex items-center justify-between">
           <span className="font-medium">Zapisano pomyślnie.</span>
-          <Link href={`/policies/${id}`} className="text-emerald-600 hover:text-emerald-800">✕</Link>
+          <Link href={`/policies/${id}`} className="text-emerald-600 hover:text-emerald-800"><X size={20} /></Link>
         </div>
       )}
 
       {error === 'no_rules' && (
         <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-xl flex items-center justify-between">
           <span className="font-medium">Dodaj co najmniej jedną regułę przed przekazaniem polityki do zatwierdzenia.</span>
-          <Link href={`/policies/${id}`} className="text-amber-700 hover:text-amber-900">✕</Link>
+          <Link href={`/policies/${id}`} className="text-amber-700 hover:text-amber-900"><X size={20} /></Link>
         </div>
       )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         <div className="px-8 py-6 border-b border-slate-100 bg-slate-50 flex justify-between items-start">
           <div>
-            <span className="text-xs font-bold tracking-wider text-slate-400 uppercase">{policy.domain}</span>
+            <span className="text-xs font-bold tracking-wider text-slate-400 uppercase">{domainLabel(policy.domain)}</span>
             <h1 className="text-2xl font-bold text-slate-900 mt-1">{policy.name}</h1>
             <p className="text-sm text-slate-500 mt-1">{policy.description}</p>
           </div>
@@ -103,7 +106,7 @@ export default async function PolicyDetailsPage({
                 ${displayVersion.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-800' : 
                   displayVersion.status === 'IN_REVIEW' ? 'bg-amber-100 text-amber-800' : 
                   'bg-slate-100 text-slate-800'}`}>
-                {displayVersion.status}
+                {policyVersionStatusLabel(displayVersion.status)}
               </span>
             </h3>
             <p className="text-sm text-slate-500 mt-2">
@@ -127,8 +130,8 @@ export default async function PolicyDetailsPage({
             {isOwnerOrAdmin && latestVersion.status === 'PUBLISHED' && (
               <form action={createDraftVersion.bind(null, policy.id)} className="flex gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-200">
                 <input type="text" name="description" placeholder="Opis nowej wersji..." required className="text-sm border border-slate-300 rounded px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500" />
-                <button type="submit" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg text-sm transition whitespace-nowrap">
-                  Utwórz DRAFT
+                <button type="submit" className="px-4 py-2 bg-[var(--color-accent)] hover:opacity-90 text-white font-medium rounded-lg text-sm transition whitespace-nowrap">
+                  Utwórz wersję roboczą
                 </button>
               </form>
             )}
@@ -136,7 +139,7 @@ export default async function PolicyDetailsPage({
             {isOwnerOrAdmin && latestVersion.status === 'DRAFT' && (
               latestVersion.rules.length > 0 ? (
                 <form action={submitForReview.bind(null, latestVersion.id)}>
-                  <button type="submit" className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg text-sm transition">
+                  <button type="submit" className="px-4 py-2 bg-[var(--color-accent)] hover:opacity-90 text-white font-medium rounded-lg text-sm transition">
                     Przekaż do zatwierdzenia
                   </button>
                 </form>
@@ -151,7 +154,7 @@ export default async function PolicyDetailsPage({
               <div className="flex gap-2">
                 <form action={rejectVersion.bind(null, latestVersion.id)}>
                   <button type="submit" className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm transition">
-                    Odrzuć (Zwróć do DRAFT)
+                    Odrzuć i zwróć do wersji roboczej
                   </button>
                 </form>
                 <form action={approveAndPublish.bind(null, latestVersion.id)}>
@@ -186,17 +189,17 @@ export default async function PolicyDetailsPage({
                             <Link href={`/policies/${id}`} className="text-sm text-slate-500 hover:text-slate-700">Anuluj</Link>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-slate-500 mb-1">Nazwa Reguły</label>
-                            <input type="text" name="name" required defaultValue={rule.name} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-blue-500 outline-none" />
+                            <label className="block text-xs font-medium text-slate-700 mb-1">Nazwa Reguły</label>
+                            <input type="text" name="name" required defaultValue={rule.name} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-[var(--color-accent)] outline-none" />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs font-medium text-slate-500 mb-1">Uzasadnienie naruszenia</label>
-                              <input type="text" name="reason" required defaultValue={rule.reason} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-blue-500 outline-none" />
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Uzasadnienie naruszenia</label>
+                              <input type="text" name="reason" required defaultValue={rule.reason} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-[var(--color-accent)] outline-none" />
                             </div>
                             <div>
-                              <label className="block text-xs font-medium text-slate-500 mb-1">Severity (Skutek UI)</label>
-                              <select name="severity" defaultValue={rule.severity} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-blue-500 outline-none">
+                              <label className="block text-xs font-medium text-slate-700 mb-1">Severity (Skutek UI)</label>
+                              <select name="severity" defaultValue={rule.severity} className="w-full bg-white border border-slate-300 rounded p-2 text-sm text-slate-900 focus:ring-[var(--color-accent)] outline-none">
                                 <option value="INFO">INFO</option>
                                 <option value="WARNING">WARNING</option>
                                 <option value="BLOCKER">BLOCKER</option>
@@ -211,7 +214,7 @@ export default async function PolicyDetailsPage({
                           </div>
                           <div className="flex justify-between pt-2">
                             <button formAction={deleteRuleAction.bind(null, rule.id)} className="px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition">Usuń regułę</button>
-                            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded transition">Zapisz zmiany</button>
+                            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-accent)] hover:opacity-90 rounded transition">Zapisz zmiany</button>
                           </div>
                         </form>
                       </td>
@@ -225,7 +228,7 @@ export default async function PolicyDetailsPage({
                       <div className="flex justify-between">
                         <p className="font-bold text-slate-900">{rule.name}</p>
                         {canEditRules && (
-                          <Link href={`/policies/${id}?editRuleId=${rule.id}`} className="opacity-0 group-hover:opacity-100 text-xs font-medium text-blue-600 hover:text-blue-800 transition">
+                          <Link href={`/policies/${id}?editRuleId=${rule.id}`} className="opacity-0 group-hover:opacity-100 text-xs font-medium text-[var(--color-accent)] hover:opacity-80 transition">
                             Edytuj
                           </Link>
                         )}
@@ -238,12 +241,12 @@ export default async function PolicyDetailsPage({
                       </span>
                     </td>
                     <td className="px-8 py-4">
-                      <pre className="text-[10px] leading-tight bg-slate-900 text-slate-300 p-2 rounded overflow-x-auto whitespace-pre-wrap break-all">
+                      <pre className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-mono rounded-lg p-2 overflow-x-auto whitespace-pre-wrap break-all">
                         {JSON.stringify(rule.condition, null, 2)}
                       </pre>
                     </td>
                     <td className="px-8 py-4">
-                      <pre className="text-[10px] leading-tight bg-slate-800 text-amber-200 p-2 rounded overflow-x-auto whitespace-pre-wrap break-all">
+                      <pre className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-mono rounded-lg p-2 overflow-x-auto whitespace-pre-wrap break-all">
                         {JSON.stringify(rule.effect, null, 2)}
                       </pre>
                     </td>
@@ -275,31 +278,31 @@ export default async function PolicyDetailsPage({
 
       {canEditRules && newRule !== 'true' && (
         <div className="mt-8 flex justify-end">
-          <Link href={`/policies/${id}?newRule=true`} className="px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition">
+          <Link href={`/policies/${id}?newRule=true`} className="px-6 py-3 rounded-lg font-bold text-white bg-[var(--color-accent)] hover:opacity-90 transition">
             + Dodaj Nową Regułę
           </Link>
         </div>
       )}
 
       {canEditRules && newRule === 'true' && (
-        <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 overflow-hidden text-white mt-8">
-          <div className="px-8 py-5 border-b border-slate-800 bg-slate-950/50">
-            <h2 className="text-lg font-bold">Dodaj Nową Regułę (JSON Mode)</h2>
+        <Card className="overflow-hidden mt-8">
+          <div className="px-8 py-5 border-b border-slate-100 bg-slate-50">
+            <h2 className="text-lg font-bold text-slate-900">Dodaj Nową Regułę (JSON Mode)</h2>
           </div>
           <div className="p-8">
             <form action={addRuleAction.bind(null, latestVersion.id)} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1">Nazwa Reguły</label>
-                <input type="text" name="name" required className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:ring-blue-500 outline-none" />
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nazwa Reguły</label>
+                <input type="text" name="name" required className="w-full bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-[var(--color-accent)] outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1">Uzasadnienie naruszenia</label>
-                  <input type="text" name="reason" required className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:ring-blue-500 outline-none" />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Uzasadnienie naruszenia</label>
+                  <input type="text" name="reason" required className="w-full bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-[var(--color-accent)] outline-none" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-400 mb-1">Severity (Tylko informacyjnie UI)</label>
-                  <select name="severity" className="w-full bg-slate-950 border border-slate-700 rounded-lg p-3 text-white focus:ring-blue-500 outline-none">
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Severity (Tylko informacyjnie UI)</label>
+                  <select name="severity" className="w-full bg-white border border-slate-300 rounded-lg p-3 text-slate-900 focus:ring-[var(--color-accent)] outline-none">
                     <option value="INFO">INFO (Tylko log)</option>
                     <option value="WARNING">WARNING (Wymaga akceptacji)</option>
                     <option value="BLOCKER">BLOCKER (Odrzuca od razu)</option>
@@ -309,34 +312,34 @@ export default async function PolicyDetailsPage({
               <div className="mt-6">
                 <RuleBuilder />
               </div>
-              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-                <Link href={`/policies/${id}`} className="px-6 py-3 rounded-lg font-bold text-slate-400 hover:text-white transition">
+              <div className="flex justify-between items-center pt-4 border-t border-slate-100 mt-4">
+                <Link href={`/policies/${id}`} className="px-6 py-3 rounded-lg font-medium text-slate-600 hover:bg-slate-100 transition border border-transparent hover:border-slate-200">
                   Anuluj
                 </Link>
-                <button type="submit" className="px-6 py-3 rounded-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition">Zapisz Regułę</button>
+                <button type="submit" className="px-6 py-3 rounded-lg font-medium text-white bg-[var(--color-accent)] hover:opacity-90 transition">Zapisz Regułę</button>
               </div>
             </form>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* AUDIT TRAIL FOR POLICY */}
       {['REVIEWER', 'ADMIN', 'AUDITOR', 'POLICY_OWNER'].includes(user?.role || '') && (
-        <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden mt-8">
-          <div className="px-8 py-5 border-b border-slate-200">
+        <Card className="overflow-hidden mt-8">
+          <div className="px-8 py-5 border-b border-slate-100 bg-slate-50">
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <span>🛡️</span> Ślad Rewizyjny (Audit Trail)
+              <Shield size={20} strokeWidth={1.5} className="text-slate-500" /> Ślad Rewizyjny (Audit Trail)
             </h2>
           </div>
           <div className="p-0">
             <table className="w-full text-left text-sm">
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {auditLogs.map(log => (
                   <tr key={log.id}>
                     <td className="px-8 py-3 text-slate-500 whitespace-nowrap w-48">{log.createdAt.toLocaleString()}</td>
                     <td className="px-8 py-3 font-medium text-slate-900">{log.user?.name || 'System'}</td>
-                    <td className="px-8 py-3 text-slate-700">{log.action}</td>
-                    <td className="px-8 py-3 text-slate-500 font-mono text-xs">{JSON.stringify(log.details)}</td>
+                    <td className="px-8 py-3 text-slate-700">{auditActionLabel(log.action)}</td>
+                    <td className="px-8 py-3 text-slate-500 font-mono text-xs max-w-xs truncate" title={JSON.stringify(log.details)}>{JSON.stringify(log.details)}</td>
                   </tr>
                 ))}
                 {auditLogs.length === 0 && (
@@ -347,7 +350,7 @@ export default async function PolicyDetailsPage({
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   )
