@@ -3,6 +3,10 @@ import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { exportAuditCsv } from './actions'
+import { auditActionLabel, decisionLabel } from '@/lib/labels'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { ClipboardList } from 'lucide-react'
 
 export default async function AuditPage({
   searchParams
@@ -44,35 +48,27 @@ export default async function AuditPage({
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Dziennik Audytu</h1>
-          <p className="text-slate-500 mt-2">Pełna historia zdarzeń systemowych i automatycznych ocen.</p>
-        </div>
-        <form action={async () => {
-          'use server';
-          const { exportAuditCsv } = await import('./actions');
-          const csvData = await exportAuditCsv();
-          // To actually download it, client side action or a route handler is better.
-          // Since it's a server action, returning CSV directly requires a trick or API endpoint.
-        }}>
-          {/* Workaround for downloading CSV: link to API endpoint */}
-          <Link href="/api/audit/export" target="_blank" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition">
+      <PageHeader 
+        title="Dziennik audytu"
+        description="Historia zdarzeń i automatycznych ocen."
+        actions={
+          <Link href="/api/audit/export" target="_blank" className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg hover:opacity-90 font-medium transition shadow-sm">
             Eksportuj CSV
           </Link>
-        </form>
-      </div>
+        }
+      />
 
-      <div className="flex border-b border-slate-200">
-        <Link href="?tab=events" className={`px-6 py-3 font-medium text-sm ${tab === 'events' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
+      {/* Segmented Control */}
+      <div className="flex bg-slate-200/50 p-1 rounded-xl w-fit">
+        <Link href="?tab=events" className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${tab === 'events' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
           Zdarzenia Systemowe
         </Link>
-        <Link href="?tab=evaluations" className={`px-6 py-3 font-medium text-sm ${tab === 'evaluations' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}>
+        <Link href="?tab=evaluations" className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${tab === 'evaluations' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}>
           Oceny Reguł
         </Link>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           {tab === 'events' ? (
             <table className="w-full text-left text-sm">
@@ -90,14 +86,21 @@ export default async function AuditPage({
                   <tr key={ev.id} className="hover:bg-slate-50/50">
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500">{ev.createdAt.toLocaleString()}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{ev.user?.name || 'System'}</td>
-                    <td className="px-6 py-4 font-mono text-xs text-black">{ev.action}</td>
+                    <td className="px-6 py-4 font-medium text-slate-900">{auditActionLabel(ev.action)}</td>
                     <td className="px-6 py-4 text-slate-600">{ev.entity} {ev.entityId && <span className="text-xs text-slate-400">({ev.entityId.slice(0,8)}...)</span>}</td>
                     <td className="px-6 py-4 text-slate-500 max-w-sm truncate" title={JSON.stringify(ev.details)}>
-                      {JSON.stringify(ev.details)}
+                      {(ev.details as any)?.message || JSON.stringify(ev.details)}
                     </td>
                   </tr>
                 ))}
-                {events.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Brak logów.</td></tr>}
+                {events.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center">
+                      <ClipboardList size={40} className="mx-auto text-slate-300 mb-3" strokeWidth={1.5} />
+                      <p className="text-slate-500 font-medium">Brak wpisów w tym okresie</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (
@@ -106,7 +109,7 @@ export default async function AuditPage({
                 <tr className="bg-slate-50 border-b border-slate-200 text-slate-500">
                   <th className="px-6 py-4 font-semibold">Data</th>
                   <th className="px-6 py-4 font-semibold">Wniosek</th>
-                  <th className="px-6 py-4 font-semibold">Decyzja</th>
+                  <th className="px-6 py-4 font-semibold text-center">Decyzja</th>
                   <th className="px-6 py-4 font-semibold">Uzasadnienie</th>
                   <th className="px-6 py-4 font-semibold">Akcje</th>
                 </tr>
@@ -116,23 +119,30 @@ export default async function AuditPage({
                   <tr key={ev.id} className="hover:bg-slate-50/50">
                     <td className="px-6 py-4 whitespace-nowrap text-slate-500">{ev.evaluatedAt.toLocaleString()}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{ev.request.title}</td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold
-                        ${ev.decision === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                        {ev.decision}
+                        ${ev.decision === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : ev.decision === 'REJECTED' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}`}>
+                        {decisionLabel(ev.decision)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-slate-500 max-w-xs truncate" title={(ev.resultSnapshot as any)?.reason}>
                       {(ev.resultSnapshot as any)?.reason}
                     </td>
                     <td className="px-6 py-4">
-                      <Link href={`/requests/${ev.requestId}`} className="text-blue-600 hover:text-blue-800 font-medium">
+                      <Link href={`/requests/${ev.requestId}`} className="text-[var(--color-accent)] hover:opacity-80 font-medium">
                         Szczegóły wniosku
                       </Link>
                     </td>
                   </tr>
                 ))}
-                {evaluations.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-slate-500">Brak logów.</td></tr>}
+                {evaluations.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center">
+                      <ClipboardList size={40} className="mx-auto text-slate-300 mb-3" strokeWidth={1.5} />
+                      <p className="text-slate-500 font-medium">Brak ocen w tym okresie</p>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}
@@ -158,7 +168,7 @@ export default async function AuditPage({
             </div>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }
