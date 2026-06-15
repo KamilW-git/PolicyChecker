@@ -16,9 +16,11 @@
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
+    "lucide-react": "^1.18.0",
     "next": "15.0.3",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "sonner": "^2.0.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
