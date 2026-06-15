@@ -24,7 +24,8 @@ app.prepare().then(() => {
       console.error(err)
       process.exit(1)
     })
-    .listen(port, () => {
+    .listen(port, hostname, () => {
       console.log(`> Ready on http://${hostname}:${port} (Custom Server)`)
+      console.log(`> Local: http://localhost:${port}`)
     })
 })
