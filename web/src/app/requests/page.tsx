@@ -2,6 +2,13 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { getCurrentUser } from '@/lib/session'
 import { redirect } from 'next/navigation'
+import { requestStatusLabel, decisionLabel, roleLabel, urgencyLabel } from '@/lib/labels'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Card } from '@/components/ui/Card'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { Suspense } from 'react'
+import RequestsTableSkeleton from './RequestsTableSkeleton'
+import RequestsTableServer from './RequestsTableServer'
 
 const OVERDUE_DAYS = 7
 
@@ -81,66 +88,61 @@ export default async function RequestsPage({
 
   const currentPage = parseInt(page || '1')
   const take = parseInt(pageSize || '20')
-  const skip = (currentPage - 1) * take
-
-  const [requests, totalCount] = await Promise.all([
-    prisma.request.findMany({
-      where: whereClause,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take,
-      include: {
-        requester: true,
-        evaluations: {
-          orderBy: { evaluatedAt: 'desc' },
-          take: 1,
-        },
-      },
-    }),
-    prisma.request.count({ where: whereClause }),
-  ])
-
-  const totalPages = Math.ceil(totalCount / take)
-
-  const filterQuery = buildFilterQuery({
-    status: statusParam,
-    decision,
-    category,
-    department,
-    urgency,
-    vendor,
-    overdue,
-    needs_information,
-    mine,
-    pageSize: String(take),
-  })
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Wnioski</h1>
-          <p className="text-slate-500 mt-2">
-            {isRestrictedRole
-              ? 'Przeglądaj swoje wnioski zakupowe.'
-              : 'Zarządzaj wnioskami zakupowymi w organizacji.'}
-          </p>
-          {isReviewer && !statusParam && !mine && (
-            <p className="text-xs text-amber-400 mt-1">Domyślnie: wnioski w recenzji (IN_REVIEW)</p>
-          )}
-        </div>
-        {user.role !== 'AUDITOR' && (
-          <Link
-            href="/requests/new"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm"
-          >
-            + Nowy wniosek
-          </Link>
-        )}
+      <PageHeader 
+        title="Wnioski"
+        description={isRestrictedRole ? 'Przeglądaj swoje wnioski zakupowe.' : 'Zarządzaj wnioskami zakupowymi w organizacji.'}
+        actions={
+          user.role !== 'AUDITOR' && (
+            <Link
+              href="/requests/new"
+              className="px-4 py-2 bg-[var(--color-accent)] text-white rounded-lg font-medium hover:opacity-90 transition shadow-sm"
+            >
+              + Nowy wniosek
+            </Link>
+          )
+        }
+      />
+      {isReviewer && !statusParam && !mine && (
+        <p className="text-xs text-amber-600 -mt-4 mb-2">Domyślnie pokazujemy wnioski w recenzji</p>
+      )}
+
+      {/* Segmented Control */}
+      <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
+        {[
+          { label: 'Wszystkie', value: '' },
+          { label: 'W recenzji', value: 'IN_REVIEW' },
+          { label: 'Braki', value: 'NEEDS_INFORMATION' },
+          { label: 'Szkice', value: 'DRAFT' }
+        ].map(tab => {
+          const isActive = (statusParam || '') === tab.value
+          return (
+            <Link
+              key={tab.label}
+              href={`/requests?status=${tab.value}`}
+              className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                isActive 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
       </div>
 
-      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-        <form className="flex flex-wrap gap-4 items-end">
+      <details className="group">
+        <summary className="text-sm font-medium text-slate-500 cursor-pointer hover:text-slate-700 transition list-none flex items-center gap-2 mb-2">
+          <span>Więcej filtrów</span>
+          <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </summary>
+        <Card className="p-4">
+          <form className="flex flex-wrap gap-4 items-end">
           <div className="flex-1 min-w-[140px]">
             <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
             <select name="status" defaultValue={statusParam || ''} className="w-full text-sm rounded border border-slate-300 px-3 py-2 bg-slate-50 text-slate-900">
@@ -158,10 +160,10 @@ export default async function RequestsPage({
             <label className="block text-xs font-medium text-slate-500 mb-1">Decyzja Silnika</label>
             <select name="decision" defaultValue={decision || ''} className="w-full text-sm rounded border border-slate-300 px-3 py-2 bg-slate-50 text-slate-900">
               <option value="">Wszystkie</option>
-              <option value="APPROVED">APPROVED</option>
-              <option value="REQUIRES_REVIEW">REQUIRES_REVIEW</option>
-              <option value="MISSING_INFORMATION">MISSING_INFORMATION</option>
-              <option value="REJECTED">REJECTED</option>
+              <option value="APPROVED">{decisionLabel('APPROVED')}</option>
+              <option value="REQUIRES_REVIEW">{decisionLabel('REQUIRES_REVIEW')}</option>
+              <option value="MISSING_INFORMATION">{decisionLabel('MISSING_INFORMATION')}</option>
+              <option value="REJECTED">{decisionLabel('REJECTED')}</option>
             </select>
           </div>
           <div className="flex-1 min-w-[120px]">
@@ -220,107 +222,12 @@ export default async function RequestsPage({
             Reset
           </Link>
         </form>
-      </div>
+        </Card>
+      </details>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50 text-slate-500 text-xs uppercase tracking-wider border-b border-slate-200">
-                <th className="px-6 py-4 font-medium">Tytuł</th>
-                <th className="px-6 py-4 font-medium">Kategoria</th>
-                <th className="px-6 py-4 font-medium">Pilność</th>
-                <th className="px-6 py-4 font-medium">Koszt</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Ostatnia Decyzja</th>
-                <th className="px-6 py-4 font-medium">Wymagana Rola</th>
-                <th className="px-6 py-4 font-medium">Akcje</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {requests.map(req => (
-                <tr key={req.id} className="hover:bg-slate-50/50 transition">
-                  <td className="px-6 py-4">
-                    <p className="font-medium text-slate-900">{req.title}</p>
-                    <p className="text-sm text-slate-500">{req.vendorName}</p>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{req.category}</td>
-                  <td className="px-6 py-4">
-                    <span className={`text-sm font-medium ${req.urgency === 'EMERGENCY' ? 'text-red-600' : req.urgency === 'HIGH' ? 'text-amber-600' : 'text-slate-600'}`}>
-                      {req.urgency}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-slate-700">
-                    {req.annualCost?.toLocaleString()} {req.currency}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
-                      ${req.status === 'AUTO_APPROVED' || req.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
-                        req.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                        req.status === 'IN_REVIEW' || req.status === 'NEEDS_INFORMATION' ? 'bg-amber-100 text-amber-800' :
-                        'bg-slate-100 text-slate-800'}`}>
-                      {req.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 text-sm">
-                    {req.decision} <br />
-                    <span className="text-xs text-slate-400">
-                      {req.evaluations[0]?.evaluatedAt.toLocaleDateString() || req.createdAt.toLocaleDateString()}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-500 text-sm">
-                    {req.evaluations[0] && ((req.evaluations[0].resultSnapshot as { requiredRoles?: string[] })?.requiredRoles)?.length ? (
-                      <div className="flex flex-wrap gap-1">
-                        {((req.evaluations[0].resultSnapshot as { requiredRoles: string[] }).requiredRoles).map((role, idx) => (
-                          <span key={idx} className="bg-blue-100 text-blue-800 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-slate-300">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Link href={`/requests/${req.id}`} className="text-blue-600 hover:text-blue-800 font-medium text-sm">
-                      Szczegóły
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {requests.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
-                    Brak wniosków do wyświetlenia.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
-            <span className="text-sm text-slate-500">
-              Strona {currentPage} z {totalPages} ({totalCount} rekordów)
-            </span>
-            <div className="flex gap-2">
-              <Link
-                href={`/requests?page=${Math.max(1, currentPage - 1)}${filterQuery}`}
-                className={`px-3 py-1 text-sm rounded border border-slate-300 bg-white ${currentPage === 1 ? 'opacity-50 pointer-events-none' : 'hover:bg-slate-50'}`}
-              >
-                Poprzednia
-              </Link>
-              <Link
-                href={`/requests?page=${Math.min(totalPages, currentPage + 1)}${filterQuery}`}
-                className={`px-3 py-1 text-sm rounded border border-slate-300 bg-white ${currentPage === totalPages ? 'opacity-50 pointer-events-none' : 'hover:bg-slate-50'}`}
-              >
-                Następna
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
+      <Suspense key={JSON.stringify(params)} fallback={<RequestsTableSkeleton />}>
+        <RequestsTableServer params={params as any} user={user} />
+      </Suspense>
     </div>
   )
 }
